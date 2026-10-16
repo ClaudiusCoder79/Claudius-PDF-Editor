@@ -629,6 +629,11 @@ class PdfEditor(V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools
     def _show_splash(self):
         """small start-up window (the EXE shows its own splash while it unpacks; this one covers building the window)"""
         try:
+            import pyi_splash                     # inside the EXE the build's own splash is already on screen - do not show a second one
+            return
+        except Exception:
+            pass
+        try:
             sp = tk.Toplevel(self)
             sp.overrideredirect(True)
             sp.configure(bg=TH.LINE if hasattr(TH, "LINE") else "#c7c7cc", padx=1, pady=1)
@@ -642,7 +647,7 @@ class PdfEditor(V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools
             tk.Label(card, text=tr("Starting..."), font=(UI_FONT, 9), bg=TH.CARD, fg=TH.SECOND).pack(pady=(14, 0))
             sp.update_idletasks()
             w, h = sp.winfo_reqwidth(), sp.winfo_reqheight()
-            sp.geometry("+%d+%d" % ((sp.winfo_screenwidth() - w) // 2, (sp.winfo_screenheight() - h) // 2))
+            sp.geometry("%dx%d+%d+%d" % (w, h, (sp.winfo_screenwidth() - w) // 2, (sp.winfo_screenheight() - h) // 2))
             sp.attributes("-topmost", True)
             sp.update()
             self._splash = sp
