@@ -1,0 +1,67 @@
+Claudius PDF Editor 3.0 - security notes and roadmap
+=========================================
+
+WHAT Claudius PDF Editor DOES NOT DO (by design)
+- It never runs JavaScript, "Launch" actions or embedded programs found in a PDF.
+- It never sends data over the network. (Links only open when you click one and confirm.)
+- It writes only to your own profile: ~/.claudius (settings, recent files, saved signatures) and, on request,
+  your own Windows account's "Open with" registry keys (HKCU - no administrator rights).
+
+PROTECTIONS ADDED IN 2.0
+- Links: only http, https and mailto links can be opened. javascript:, file:, ms-msdt: and other custom
+  schemes are blocked.
+- Word/Excel/PowerPoint conversion through Microsoft Office: file names are passed to PowerShell in
+  environment variables, never pasted into the script text.
+- Huge pages: bitmaps are capped (30 megapixels) so a hostile "14400 x 14400 pt" page cannot freeze or
+  crash the program (zoom, export, OCR, conversion).
+- Redaction removes the words from the page, from images, and from document properties / XMP / bookmark titles.
+- Temporary files (print jobs, conversion folders) are deleted after use; leftovers older than a day are swept at start.
+- Printing talks directly to the printer; no predictable temp file name.
+- Password protection uses AES-256. Saving writes a temporary file first and swaps it in, so a failed save never
+  damages the original.
+- File > Open recent > "Clear list of recent files".
+
+THINGS TO KNOW
+- Claudius PDF Editor reads untrusted PDFs with MuPDF (PyMuPDF). Keep PyMuPDF up to date (requirements.txt gives the minimum).
+- The program is not code-signed, so Windows SmartScreen may warn. To remove the warning, sign Claudius PDF Editor.exe and the
+  installer with a code-signing certificate (e.g. Azure Trusted Signing or SignPath, which is free for open source).
+- The build prints a SHA-256 checksum (SHA256SUMS.txt in the build output) so downloads can be verified.
+- Saved signatures are plain PNG files in ~/.claudius/signatures - protected only by your Windows account.
+- "Permissions" in Protect are only enforced by viewers that respect them, and only with an owner password.
+- Windows' own file pickers and message boxes (and the File menu) keep the system look.
+
+ADDED IN 2.1 - WHAT TO KNOW
+- Crash recovery writes copies of unsaved documents to ~/.claudius/recovery (readable only by your account where Windows
+  allows it). The copies are deleted on a normal exit, after saving, and after 14 days. Password-protected documents are
+  never written there, because the password is not stored anywhere.
+- Signed PDFs: a signed PDF must not be re-saved by an editor. Claudius PDF Editor keeps the original bytes so "Save" of an unchanged
+  signed file does not damage the signature, and warns before saving changes. It cannot create or check signatures.
+- Read aloud, scanner and PDF/A call PowerShell / Ghostscript with fixed commands; document text and file names are passed
+  through temporary files or environment variables, never pasted into a command line. Ghostscript runs with -dSAFER.
+- Imported annotation files are size-limited. Attachments are never opened automatically - only saved where you choose.
+- The own-pattern box in "Redact data" takes a regular expression; a badly written one can be slow on large documents.
+- Text selection and Bates numbers do not change the PDF; Night view only changes the picture on screen.
+
+SECURITY CHECK OF 3.0
+- Static scan with bandit over all 10 program modules: no high and no medium findings. The 105 low findings are
+  "try / except: pass" around optional features and the fixed-command calls of PowerShell / Ghostscript / lpr that were
+  already described above (no shell, arguments passed as lists, user text passed through files or environment variables).
+- Reviewed by hand: file names made from table data (Fill from table) or file names (Batch) are cleaned of path
+  characters and ".." and always written inside the folder you chose; existing files are never overwritten.
+- Batch and Search folder do not follow shortcuts / links into other folders, skip hidden folders, skip password-protected,
+  damaged and files over 300 MB, and stop at 5000 files / 500 hits.
+- CSV / Excel files for Fill from table are limited (50 MB, 2000 rows). Excel files are read without running macros.
+- Look up / translate builds the web address with proper encoding, only https, and sends text only when you press a button.
+- PDF names and field names written into the PDF are escaped; radio group values are limited to letters, digits and "_".
+- Settings, presets and signature blocks (JSON files in ~/.claudius) are type-checked when loaded; a damaged file
+  falls back to the defaults. A signature block can no longer point at an arbitrary image file.
+- Export of highlights removes control characters that Word files cannot hold.
+- Clean data / Redaction check help to find hidden data, but cannot prove a document is free of it - check important
+  files by opening the saved copy in another viewer.
+
+STILL NOT IN Claudius PDF Editor (ideas)
+1. Real PDF tagging (accessibility): Claudius PDF Editor only checks and fixes title / language.
+2. Certificate signatures (removed on request).
+3. Word-by-word highlighting while reading aloud; choosing the scanner resolution / paper source inside Claudius PDF Editor.
+4. Selecting text across several pages in one drag; drag-to-reorder tabs.
+5. PDF/A without Ghostscript; PDF/UA export.
