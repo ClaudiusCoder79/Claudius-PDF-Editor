@@ -18,6 +18,11 @@ import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk, filedialog, messagebox, simpledialog, colorchooser
 
+# PyMuPDF 2.x tries to load an optional AI "layout" add-on (onnx models, several 100 MB) when it starts. This program
+# does not use it, and inside the EXE its model files are not packed, so it is switched off here.
+for _m in ("pymupdf.layout", "pymupdf_layout", "pymupdf4llm"):
+    sys.modules.setdefault(_m, None)
+
 try:
     import pymupdf as fitz          # newer PyMuPDF
 except ImportError:                 # older PyMuPDF

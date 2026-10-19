@@ -96,7 +96,7 @@ def radio_add(doc, page, group, export, rect):
     kid = next(x.xref for x in page.widgets() if x.field_name == tmp)
     ap = doc.xref_get_key(kid, "AP/N")
     if ap[0] != "xref" and ap[1]:
-        doc.xref_set_key(kid, "AP/N", ap[1].replace("/Yes", "/" + export))
+        doc.xref_set_key(kid, "AP/N", re.sub(r"/(?!Off\b)[A-Za-z0-9_]+(?=\s*\d+ 0 R)", "/" + export, ap[1]))   # the "on" state is called Yes (PyMuPDF 1.x) or False (2.x)
     for key in ("T", "FT", "Ff", "V"):
         doc.xref_set_key(kid, key, "null")
     root = doc.pdf_catalog()
