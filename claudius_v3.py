@@ -767,14 +767,18 @@ class V3Tools:
             self.v3_move_image(bbox, xref, p1.x - p0.x, p1.y - p0.y)
             return
         m = tk.Menu(self, tearoff=0)
-        m.add_command(label="Replace with another picture...", command=lambda: self.v3_replace_image(bbox, xref))
-        m.add_command(label="Delete this picture", command=lambda: self.v3_delete_image(bbox))
-        m.add_command(label="Save this picture as...", command=lambda: self.v3_save_image(xref))
-        m.add_separator()
-        self.align_menu(m, lambda mode: self.v3_align_image(bbox, xref, mode))
+        self.v3_picture_items(m, bbox, xref)
         m.add_separator()
         m.add_command(label="Tip: drag a picture to move it", state="disabled")
         m.tk_popup(self.winfo_pointerx(), self.winfo_pointery())
+
+    def v3_picture_items(self, m, bbox, xref):
+        """Menu entries for a picture that is already part of the page (also used by the right-click menu)."""
+        m.add_command(label="Delete this picture", command=lambda: self.v3_delete_image(bbox))
+        m.add_command(label="Replace with another picture...", command=lambda: self.v3_replace_image(bbox, xref))
+        m.add_command(label="Save this picture as...", command=lambda: self.v3_save_image(xref))
+        m.add_separator()
+        self.align_menu(m, lambda mode: self.v3_align_image(bbox, xref, mode))
 
     # ------------------------------------------------------------------ align to the page (like PowerPoint)
     ALIGN_MODES = (("center", "Center on page"), ("h", "Center horizontally"), ("v", "Center vertically"),

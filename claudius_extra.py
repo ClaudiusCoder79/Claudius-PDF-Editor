@@ -1284,9 +1284,14 @@ class ExtraMarkup:
             for lk in pg.get_links():
                 if fitz.Rect(lk["from"]).contains(pt):
                     link = lk
-        if hit is None and link is None:
+        pic = self._v3_image_at(pt) if hasattr(self, "_v3_image_at") else None
+        if hit is None and link is None and pic is None:
             return False
         m = tk.Menu(self, tearoff=0)
+        if hit is None and link is None:
+            self.v3_picture_items(m, fitz.Rect(pic["bbox"]), pic["xref"])
+            m.tk_popup(e.x_root, e.y_root)
+            return True
         if hit is not None:
             xref = hit.xref
             if hit.type[0] == fitz.PDF_ANNOT_TEXT or hit.info.get("content"):
@@ -1294,6 +1299,9 @@ class ExtraMarkup:
             m.add_command(label="Delete this annotation", command=lambda: self.delete_annot(xref))
         else:
             m.add_command(label="Delete this link", command=lambda: self.delete_link(link))
+        if pic is not None:
+            m.add_separator()
+            self.v3_picture_items(m, fitz.Rect(pic["bbox"]), pic["xref"])
         m.tk_popup(e.x_root, e.y_root)
         return True
 

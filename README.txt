@@ -121,6 +121,8 @@ PRESETS                Header/Footer, Watermark and Page numbers dialogs have Lo
 EDIT TEXT              Edit text now keeps the original font: the font inside the PDF when it has the letters, else an installed
                        font of the same family (Arial, Times, Calibri, Verdana ...), else the nearest standard font.
 EDIT PICTURES          Tools > Edit pictures: click a picture to replace, delete or save it, drag it to move it.
+DELETE A PICTURE      Right-click it on the page > Delete this picture (a picture you have just added but not applied yet:
+                       click it and press Delete). Undo (Ctrl+Z) brings it back.
 ALIGN PICTURES        Photos > Align (or right-click a picture > Align to page): centre horizontally / vertically / both,
                        or align to the left, right, top or bottom of the page. Works on new and existing pictures.
 SIGNATURE BLOCKS       Tools > Signature block: signature + line + printed name + position + today's date as one stamp.
