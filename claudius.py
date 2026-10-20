@@ -45,7 +45,7 @@ except ImportError:
     sys.exit("claudius_extra.py is missing - keep it in the same folder as claudius.py")
 
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "3.2"
+APP_VERSION = "3.3"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -57,6 +57,8 @@ from claudius_features import FeatureTools, page_label
 from claudius_view import ViewTools
 from claudius_v3 import V3Tools
 from claudius_text import TextTools
+from claudius_frame import FrameTools
+from claudius_quick import QuickTools
 from claudius_v3b import V3bTools
 from claudius_pro import ProTools
 ACCENT = TH.ACCENT
@@ -549,7 +551,7 @@ class Snap(tuple):
         return s
 
 
-class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools, tk.Tk):
+class PdfEditor(TextTools, FrameTools, QuickTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools, tk.Tk):
     def __init__(self, path=None):
         super().__init__()
         self._splash = None
@@ -618,6 +620,7 @@ class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools,
         self.show_tab("Home")
         self.set_tool("view")
         self._v3_after_ui()
+        self.after(400, self.qt_restore)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self._win11_init()
@@ -784,6 +787,7 @@ class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools,
         else:
             b = RibbonButton(parent, icon, text, cmd, size, width)
         b.pack(side="left", padx=1)
+        self.qt_register(b, icon, text, cmd, tool, size, width)
         return b
 
     def style_group(self, parent):
@@ -1073,6 +1077,8 @@ class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools,
         g = self.group(r, "Navigate")
         self.rb(g, "◀", "Previous", lambda: self.goto(self.page_no - 1), size=15)
         self.rb(g, "▶", "Next", lambda: self.goto(self.page_no + 1), size=15)
+        g = self.group(r, "Quick toolbar")
+        self.rb(g, "★", "Quick toolbar", self.qt_toggle, size=19, width=70)
         g = self.group(r, "Page view")
         self.rb(g, "☰", "Continuous", self.toggle_continuous, size=19, width=70)
         self.rb(g, "☾", "Night view", self.toggle_night, size=19, width=70)
@@ -1223,7 +1229,7 @@ class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools,
         self.bind("<Next>", lambda e: self._key_nav(1))
 
     def _typing(self):
-        return isinstance(self.focus_get(), (tk.Entry, ttk.Entry, ttk.Spinbox))
+        return isinstance(self.focus_get(), (tk.Entry, ttk.Entry, ttk.Spinbox, tk.Text, ttk.Combobox))
 
     def _key_delete(self, _e):
         if self._typing():
@@ -1243,7 +1249,7 @@ class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools,
         return "#%02x%02x%02x" % tuple(int(round(c * 255)) for c in rgb)
 
     HINTS = {"view": "Hand tool: drag over text to select it (Ctrl+C copies), drag elsewhere to move the page. Ctrl + mouse wheel to zoom.",
-             "text": "Text: click on the page where the text should go.",
+             "text": "Text: click or drag on the page to make a text frame, then type. Drag the frame to move it.",
              "highlight": "Highlight: drag over the text.",
              "rect": "Rectangle: drag to draw. Hold Shift for a square. Turn on Fill in the Shapes tab for solid shapes.",
              "pen": "Pen: hold the mouse button and draw.",
@@ -2060,6 +2066,7 @@ class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools,
         return o.pv_photo
 
     def draw_floats(self):
+        self.tf_draw()
         self.canvas.delete("fl")
         self._handles = {}
         if not self.doc or not self.floats:
@@ -2168,6 +2175,7 @@ class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools,
 
     # ---- applying to the page
     def commit_floats(self):
+        self.tf_commit()
         if not self.floats:
             self.sel = None
             return
@@ -2712,6 +2720,8 @@ class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools,
         if self.presenting:
             self._pres_click(1)
             return
+        if self.tf_press(e):
+            return
         t = self.tool.get()
         if t == "view":
             if self.cont and self.floats:
@@ -2726,6 +2736,8 @@ class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools,
             return
         self._cont_focus_at(e)
         self._drag_start = (self.canvas.canvasx(e.x), self.canvas.canvasy(e.y))
+        if t == "edittext":
+            self.tf_move_begin(e)
         if t == "text":
             self._add_text(e)
             self._drag_start = None
@@ -2734,6 +2746,9 @@ class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools,
 
     def _on_drag(self, e):
         if self.doc is None:
+            return
+        if self._tfd:
+            self.tf_drag(e)
             return
         if self.fdrag:
             self._float_drag(e)
@@ -2753,6 +2768,8 @@ class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools,
             self.canvas.create_line(px, py, x, y, fill=self._hex(self.color),
                                     width=self.line_width.get() * self.zoom, tags="preview")
             self._stroke.append((x, y))
+        elif t == "edittext":
+            self.tf_move_preview(e)
         elif t in SHAPE_TOOLS:
             self.draw_shape_preview(t, self._drag_start, (x, y), bool(e.state & 1))
         elif t in ("highlight", "whiteout", "image", "crop", "pagecrop") + tuple(RECT_TOOLS):
@@ -2763,6 +2780,9 @@ class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools,
 
     def _on_release(self, e):
         if self.doc is None:
+            return
+        if self._tfd:
+            self.tf_release(e)
             return
         if self.fdrag:
             self._float_release(e)

@@ -667,6 +667,7 @@ class ViewTools:
             self._after_render()
             if self.floats and self.float_page == i:
                 self.draw_floats()
+            self.tf_draw()
             self._draw_textsel(i)
         finally:
             self._cont_focus(keep_no)

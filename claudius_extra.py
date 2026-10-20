@@ -823,10 +823,10 @@ EXTRA_HINTS = {
     "strike": "Strikethrough: drag over the text.",
     "squiggly": "Squiggly underline: drag over the text.",
     "sticky": "Sticky note: click where the note should go.",
-    "textbox": "Text box: drag a box, then type the text.",
+    "textbox": "Text box: drag a box on the page, then type. Drag the frame to move it.",
     "link": "Link: drag over the area that should become clickable.",
     "redact": "Redact: drag over content to remove it permanently (black box).",
-    "edittext": "Edit text: click a line of text to change it. Shift+click edits the whole paragraph.",
+    "edittext": "Edit text: click a line to change it, drag a line to move it. Shift = whole paragraph.",
     "extract": "Extract text: drag over an area to copy its text (uses OCR on scanned pages).",
     "formtext": "Text field: drag a box to add a fillable text field.",
     "formcheck": "Check box: click where the check box should go.",
@@ -888,7 +888,11 @@ class ExtraMarkup:
             if t == "sticky":
                 self.add_sticky(pt)
             elif t == "edittext":
-                self.edit_text_at(pt, block=shift)
+                p0 = self._canvas_pt(x0, y0)
+                if math.hypot(x1 - x0, y1 - y0) > 6 and self._mvl and self._mvl[1]:
+                    self.move_text_line(p0, pt, block=shift)
+                else:
+                    self.edit_text_at(pt, block=shift)
             elif t == "date":
                 self.add_date(x1, y1)
             elif t == "formcheck":

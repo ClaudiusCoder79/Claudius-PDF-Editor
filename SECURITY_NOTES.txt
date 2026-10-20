@@ -1,4 +1,4 @@
-Claudius PDF Editor 3.2 - security notes and roadmap
+Claudius PDF Editor 3.3 - security notes and roadmap
 =========================================
 
 WHAT Claudius PDF Editor DOES NOT DO (by design)
@@ -58,6 +58,12 @@ SECURITY CHECK OF 3.0
 - Export of highlights removes control characters that Word files cannot hold.
 - Clean data / Redaction check help to find hidden data, but cannot prove a document is free of it - check important
   files by opening the saved copy in another viewer.
+
+SECURITY CHECK OF 3.3
+- Static scan with bandit over all 13 program modules (new: claudius_frame.py, claudius_quick.py): no high and no medium findings (117 low); pyflakes
+  finds no undefined names. Text frames write only into the open document (same writing engine as 3.2); the quick toolbar only
+  stores a list of button names, its position and "shown" in the settings file (type-checked when loaded, unknown names are ignored).
+  Neither feature starts a program or makes a network connection.
 
 SECURITY CHECK OF 3.2
 - Static scan with bandit over all 11 program modules (new: claudius_text.py): no high and no medium findings (112 low, of the same

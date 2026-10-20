@@ -7,8 +7,8 @@ RUN
 2. Double-click run.bat  (installs the needed packages on first run).
    Keep all files of the folder together (claudius.py and the claudius_*.py modules, requirements.txt, claudius.ico, splash.png).
 
-INSTALLER (Claudius-PDF-Editor-Setup-3.2.exe)
-  Double-click build_installer.bat (needs Inno Setup, free: jrsoftware.org/isdl.php) -> installer\Claudius-PDF-Editor-Setup-3.2.exe
+INSTALLER (Claudius-PDF-Editor-Setup-3.3.exe)
+  Double-click build_installer.bat (needs Inno Setup, free: jrsoftware.org/isdl.php) -> installer\Claudius-PDF-Editor-Setup-3.3.exe
   or let GitHub build it: the workflow in claudius_github_repo.zip makes both the .exe and the installer.
   The installer asks for administrator rights and installs into C:\Program Files\Claudius PDF Editor.
   It adds a Start menu folder (program + Uninstall), an optional desktop icon, an optional "Open with" entry for PDFs,
@@ -108,6 +108,19 @@ PRINTING
 File > Print (Ctrl+P) or the printer button in the quick toolbar: choose the printer, number of copies,
 pages and scale. On Windows the pages are sent straight to the printer - no other PDF program is needed.
 
+NEW IN 3.3
+----------
+TEXT FRAMES            Add text and Text box now work like a text box in Word: click (or drag) on the page and a frame appears -
+                       type straight into it. Drag the little handle on top or the edge to move it, drag the squares to resize it.
+                       A format bar floats above the frame (font, size, B / I / U / S, colour, alignment, Frame, Background).
+                       The frame grows while you type. Apply (or Ctrl+Enter, or a click outside) puts the text on the page.
+MOVE TEXT              Edit text tool: drag a line of existing text to a new place (Shift = the whole paragraph). A plain click
+                       still edits the text as before. Ctrl+Z undoes it.
+QUICK TOOLBAR          View > Quick toolbar opens a free-floating window with the buttons you use most. Move it anywhere, resize
+                       it and the buttons re-flow. Right-click any ribbon button > Add to quick toolbar, or press "+" on the
+                       toolbar to choose buttons from a list. Right-click a quick button to remove it or move it. The buttons,
+                       the position and whether it is shown are remembered.
+
 NEW IN 3.2
 ----------
 TEXT WINDOW            Add text, Text box and Edit text now share one window: a format bar on the left (font, size with a
@@ -197,7 +210,7 @@ NOT TESTED ON REAL HARDWARE
   they were tested here with stand-ins. PDF/A was tested with a stand-in for Ghostscript. If one of them does not
   work on your PC, tell me what the message says.
 
-VERSION 3.2  (3.0 added the Settings window, tools and review features; 2.1 added tabs, selection, recovery ...; 2.0 brought the iOS look, dark mode, six languages, printing)
+VERSION 3.3  (3.2 added the new text window, picture alignment and password fixes; 3.0 added the Settings window, tools and review features; 2.1 added tabs, selection, recovery ...; 2.0 brought the iOS look, dark mode, six languages, printing)
 -----------
 All the above, plus the changes listed in 2.0: new look (iOS style, light and dark), 3-D icon buttons,
 quick toolbar, six languages, "Make Claudius PDF Editor the default PDF app", print dialog.
