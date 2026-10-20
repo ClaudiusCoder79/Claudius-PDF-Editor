@@ -1,4 +1,4 @@
-Claudius PDF Editor 3.0 - security notes and roadmap
+Claudius PDF Editor 3.2 - security notes and roadmap
 =========================================
 
 WHAT Claudius PDF Editor DOES NOT DO (by design)
@@ -58,6 +58,15 @@ SECURITY CHECK OF 3.0
 - Export of highlights removes control characters that Word files cannot hold.
 - Clean data / Redaction check help to find hidden data, but cannot prove a document is free of it - check important
   files by opening the saved copy in another viewer.
+
+SECURITY CHECK OF 3.2
+- Static scan with bandit over all 11 program modules (new: claudius_text.py): no high and no medium findings (112 low, of the same
+  kinds as in 3.0); pyflakes finds no undefined names. The new text window writes only into the open document, uses fonts only from the PDF itself or from
+  the Windows / system font folders, and starts no program and makes no network connection.
+- Password box: the password is kept only in memory (needed to save the file again with its password) and is never written
+  to the settings, recovery copies or logs. Unprotect saves a new file and never overwrites the original without asking.
+- PyMuPDF 2.x: the optional "layout" add-on (AI model files) is switched off; it is not used and not packed into the EXE.
+- The remembered text format (font, size, colour ...) is type-checked when loaded; a damaged settings file falls back to defaults.
 
 STILL NOT IN Claudius PDF Editor (ideas)
 1. Real PDF tagging (accessibility): Claudius PDF Editor only checks and fixes title / language.

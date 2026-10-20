@@ -7,8 +7,8 @@ RUN
 2. Double-click run.bat  (installs the needed packages on first run).
    Keep all files of the folder together (claudius.py and the claudius_*.py modules, requirements.txt, claudius.ico, splash.png).
 
-INSTALLER (Claudius-PDF-Editor-Setup-3.0.exe)
-  Double-click build_installer.bat (needs Inno Setup, free: jrsoftware.org/isdl.php) -> installer\Claudius-PDF-Editor-Setup-3.0.exe
+INSTALLER (Claudius-PDF-Editor-Setup-3.2.exe)
+  Double-click build_installer.bat (needs Inno Setup, free: jrsoftware.org/isdl.php) -> installer\Claudius-PDF-Editor-Setup-3.2.exe
   or let GitHub build it: the workflow in claudius_github_repo.zip makes both the .exe and the installer.
   The installer asks for administrator rights and installs into C:\Program Files\Claudius PDF Editor.
   It adds a Start menu folder (program + Uninstall), an optional desktop icon, an optional "Open with" entry for PDFs,
@@ -108,6 +108,23 @@ PRINTING
 File > Print (Ctrl+P) or the printer button in the quick toolbar: choose the printer, number of copies,
 pages and scale. On Windows the pages are sent straight to the printer - no other PDF program is needed.
 
+NEW IN 3.2
+----------
+TEXT WINDOW            Add text, Text box and Edit text now share one window: a format bar on the left (font, size with a
+                       slider, Bold, Italic, Underline, Strike-through, alignment incl. justify, line spacing, colour) and a big
+                       live preview of the real page on the right (with a zoom slider). Edit text shows Before and After and
+                       starts with the original font; text boxes can shrink the text to fit and have a background and border.
+                       Your last format is remembered. Fonts installed on the PC are offered; Polish and other letters work.
+ALIGN PICTURES         Photos > Align (or right-click a picture > Align to page): centre horizontally / vertically / both, or
+                       align to the left, right, top or bottom of the page. Works on new and existing pictures.
+DELETE A PICTURE       Right-click a picture on the page > Delete this picture (also Replace, Save as, Align). Ctrl+Z brings it back.
+PASSWORD BOX           PDFs that ask for a password now always show a proper password box (Show password, 3 tries) - also when the
+                       file is opened by double-click or "Open with".
+REMOVE A PASSWORD      Open the PDF (enter the password), then Sign/Protect tab > Unprotect: you choose a name and a new file is
+                       saved without any password. The original stays as it was. You need to know the password.
+FIXES                  Start-up splash shows the right version and only once; works with PyMuPDF 2.x (its optional AI layout
+                       add-on is switched off); radio-button groups work with PyMuPDF 2.x.
+
 NEW IN 3.0
 ----------
 SETTINGS               File > Settings (Ctrl+,): language, appearance, what to remember, view of a new document, autosave
@@ -121,12 +138,6 @@ PRESETS                Header/Footer, Watermark and Page numbers dialogs have Lo
 EDIT TEXT              Edit text now keeps the original font: the font inside the PDF when it has the letters, else an installed
                        font of the same family (Arial, Times, Calibri, Verdana ...), else the nearest standard font.
 EDIT PICTURES          Tools > Edit pictures: click a picture to replace, delete or save it, drag it to move it.
-REMOVE A PASSWORD     Open the PDF (enter the password), then Sign/Protect tab > Unprotect: you choose a name and a new file is
-                       saved without any password. The original stays as it was. You need to know the password.
-DELETE A PICTURE      Right-click it on the page > Delete this picture (a picture you have just added but not applied yet:
-                       click it and press Delete). Undo (Ctrl+Z) brings it back.
-ALIGN PICTURES        Photos > Align (or right-click a picture > Align to page): centre horizontally / vertically / both,
-                       or align to the left, right, top or bottom of the page. Works on new and existing pictures.
 SIGNATURE BLOCKS       Tools > Signature block: signature + line + printed name + position + today's date as one stamp.
                        Saved blocks are listed under Sign > Signature.
 FORMS                  Tools > Drop-down and Radio button add new field types. Field editor: rename fields, change the choices of
@@ -186,7 +197,7 @@ NOT TESTED ON REAL HARDWARE
   they were tested here with stand-ins. PDF/A was tested with a stand-in for Ghostscript. If one of them does not
   work on your PC, tell me what the message says.
 
-VERSION 3.0  (2.1 added tabs, selection, recovery ...; 2.0 brought the iOS look, dark mode, six languages, printing)
+VERSION 3.2  (3.0 added the Settings window, tools and review features; 2.1 added tabs, selection, recovery ...; 2.0 brought the iOS look, dark mode, six languages, printing)
 -----------
 All the above, plus the changes listed in 2.0: new look (iOS style, light and dark), 3-D icon buttons,
 quick toolbar, six languages, "Make Claudius PDF Editor the default PDF app", print dialog.

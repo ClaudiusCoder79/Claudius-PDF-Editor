@@ -45,7 +45,7 @@ except ImportError:
     sys.exit("claudius_extra.py is missing - keep it in the same folder as claudius.py")
 
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "3.0"
+APP_VERSION = "3.2"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -56,6 +56,7 @@ from claudius_theme import round_rect, rr_points, PillTab
 from claudius_features import FeatureTools, page_label
 from claudius_view import ViewTools
 from claudius_v3 import V3Tools
+from claudius_text import TextTools
 from claudius_v3b import V3bTools
 from claudius_pro import ProTools
 ACCENT = TH.ACCENT
@@ -548,7 +549,7 @@ class Snap(tuple):
         return s
 
 
-class PdfEditor(V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools, tk.Tk):
+class PdfEditor(TextTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools, tk.Tk):
     def __init__(self, path=None):
         super().__init__()
         self._splash = None
@@ -2845,24 +2846,7 @@ class PdfEditor(V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools
         sh.commit()
 
     def _add_text(self, e):
-        txt = simpledialog.askstring(APP_NAME, "Text to insert:")
-        if not txt:
-            return
-        pt = self.to_pdf_point(e.x, e.y)
-        pg = self.page()
-        kwargs = dict(fontsize=self.font_size.get(), color=self.color, rotate=pg.rotation)
-        if os.path.exists(WIN_ARIAL):
-            kwargs.update(fontname="arial", fontfile=WIN_ARIAL)
-        else:
-            kwargs.update(fontname="helv")
-        try:
-            self.snapshot()
-            pg.insert_text(pt, txt, **kwargs)
-        except Exception as ex:
-            self.undo_stack.pop()
-            messagebox.showerror(APP_NAME, f"Could not insert text:\n{ex}")
-            return
-        self.edited()
+        self.tt_add_click(e)
 
     def _add_image(self, rect):
         p = filedialog.askopenfilename(filetypes=[("Images", "*.png *.jpg *.jpeg *.bmp *.gif"),
