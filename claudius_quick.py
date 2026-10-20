@@ -168,20 +168,94 @@ class QuickTools:
         for key in self.qt_items():
             d = self.qt_reg[key]
             if d["tool"]:
-                b = RibbonButton(self._qt_flow, d["icon"], d["text"], lambda t=d["tool"]: self.set_tool(t),
+                b = RibbonButton(self._qt_flow, d["icon"], d["text"], self._qt_guard(lambda t=d["tool"]: self.set_tool(t)),
                                  d["size"], d["width"], color=d["color"])
                 b._qt_tool = d["tool"]
                 self.tool_buttons.setdefault(d["tool"], []).append(b)
                 b.set_active(self.tool.get() == d["tool"])
             else:
-                b = RibbonButton(self._qt_flow, d["icon"], d["text"], d["cmd"], d["size"], d["width"], color=d["color"])
+                b = RibbonButton(self._qt_flow, d["icon"], d["text"], self._qt_guard(d["cmd"]), d["size"], d["width"],
+                                 color=d["color"])
             b.bind("<Button-3>", lambda e, k=key: self._qt_button_menu(e, k))
+            b.bind("<ButtonPress-1>", lambda e, k=key: self._qt_drag_start(e, k), add="+")
+            b.bind("<B1-Motion>", self._qt_drag_move, add="+")
+            b.bind("<ButtonRelease-1>", self._qt_drag_end, add="+")
             b._qt_key = key
             self._qt_btns.append(b)
         add = RibbonButton(self._qt_flow, "＋", "Add...", self.qt_picker, 20, 60)
         add._qt_key = None
         self._qt_btns.append(add)
         self._qt_layout()
+
+    # ------------------------------------------------------------ drag a button to a new place
+    def _qt_guard(self, fn):
+        """a click that was really a drag must not run the button"""
+        return lambda: None if self.__dict__.get("_qt_moved") else fn()
+
+    def _qt_drag_start(self, e, key):
+        self._qt_moved = False
+        self._qt_drag = {"key": key, "x": e.x_root, "y": e.y_root}
+
+    def _qt_slot(self, xr, yr):
+        """index in the item list where a button dropped at this screen position goes"""
+        btns = [b for b in self._qt_btns if b._qt_key is not None]
+        if not btns:
+            return 0
+        best, bd = len(btns), None
+        for i, b in enumerate(btns):
+            bx, by, bw, bh = b.winfo_rootx(), b.winfo_rooty(), b.winfo_width(), b.winfo_height()
+            if by <= yr <= by + bh and bx <= xr <= bx + bw:
+                return i if xr < bx + bw / 2 else i + 1
+            cx, cy = bx + bw / 2, by + bh / 2
+            dist = (cx - xr) ** 2 + ((cy - yr) * 2) ** 2
+            if bd is None or dist < bd:
+                bd, best = dist, i if xr < cx else i + 1
+        return best
+
+    def _qt_drag_move(self, e):
+        d = self.__dict__.get("_qt_drag")
+        if not d:
+            return
+        if not self._qt_moved and abs(e.x_root - d["x"]) + abs(e.y_root - d["y"]) < 8:
+            return
+        self._qt_moved = True
+        btns = [b for b in self._qt_btns if b._qt_key is not None]
+        i = self._qt_slot(e.x_root, e.y_root)
+        mark = self.__dict__.get("_qt_mark")
+        if mark is None or not mark.winfo_exists():
+            mark = self._qt_mark = tk.Frame(self._qt_flow, bg="#0a84ff", width=4)
+        if not btns:
+            return
+        ref = btns[min(i, len(btns) - 1)]
+        x = ref.winfo_x() - 3 if i < len(btns) else ref.winfo_x() + ref.winfo_width() + 1
+        mark.place(x=x, y=ref.winfo_y(), width=3, height=ref.winfo_height())
+        mark.lift()
+        self._qt_flow.config(cursor="fleur")
+
+    def _qt_drag_end(self, e):
+        d, self._qt_drag = self.__dict__.get("_qt_drag"), None
+        mark = self.__dict__.get("_qt_mark")
+        if mark is not None and mark.winfo_exists():
+            mark.destroy()
+        try:
+            self._qt_flow.config(cursor="")
+        except tk.TclError:
+            pass
+        if not d or not self._qt_moved:
+            return
+        items = self.qt_items()
+        key = d["key"]
+        if key not in items:
+            return
+        new = self._qt_slot(e.x_root, e.y_root)
+        old = items.index(key)
+        items.pop(old)
+        if new > old:
+            new -= 1
+        items.insert(max(0, min(len(items), new)), key)
+        self._qt_save()
+        self.after(50, self._qt_rebuild)
+        self.after(300, lambda: setattr(self, "_qt_moved", False))
 
     def _qt_layout(self):
         fl = getattr(self, "_qt_flow", None)

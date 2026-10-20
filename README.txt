@@ -118,7 +118,7 @@ MOVE TEXT              Edit text tool: drag a line of existing text to a new pla
                        still edits the text as before. Ctrl+Z undoes it.
 QUICK TOOLBAR          View > Quick toolbar opens a free-floating window with the buttons you use most. Move it anywhere, resize
                        it and the buttons re-flow. Right-click any ribbon button > Add to quick toolbar, or press "+" on the
-                       toolbar to choose buttons from a list. Right-click a quick button to remove it or move it. The buttons,
+                       toolbar to choose buttons from a list. Drag a quick button to another place to change the order (a blue bar shows where it will land); right-click it to remove it. The buttons,
                        the position and whether it is shown are remembered.
 
 NEW IN 3.2
