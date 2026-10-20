@@ -3420,15 +3420,33 @@ class ExtraTools(ExtraMarkup, ExtraConvert, Win11Tools):
         self.status.config(text="Password protection will be used when saving.")
 
     def do_unprotect(self):
+        """Take the password off and save the result as a NEW file (the original is not touched)."""
         if not self.need_doc():
             return
-        if self.protect is None:
+        enc = getattr(self.doc, "is_encrypted", False) or bool((self.doc.metadata or {}).get("encryption"))   # also files with only an owner password
+        if self.protect is None and not enc:
             messagebox.showinfo(APP, "This document is not password protected.")
             return
+        old = self.protect
         self.protect = None
-        self.modified = True
+        base = os.path.splitext(os.path.basename(self.path or "document.pdf"))[0]
+        p = filedialog.asksaveasfilename(parent=self, title="Save the unprotected copy as", defaultextension=".pdf",
+                                         filetypes=[("PDF files", "*.pdf")], initialfile=base + "_unlocked.pdf",
+                                         initialdir=os.path.dirname(self.path) if self.path else None)
+        if not p:
+            self.protect = old                                   # cancelled: nothing changes
+            return
+        if self.path and os.path.normcase(os.path.abspath(p)) == os.path.normcase(os.path.abspath(self.path)):
+            if not messagebox.askyesno(APP, "This replaces the protected original with an unprotected copy.\n\nContinue?"):
+                self.protect = old
+                return
+        self._write(p)
+        if self.modified:                                        # the save did not happen (error or declined)
+            self.protect = old
+            return
+        self.path = p
         self.update_ui()
-        messagebox.showinfo(APP, "The password will be removed the next time you save.\n\nPress Ctrl+S (or Save).")
+        self.status.config(text=_tr("Saved without a password:") + " " + os.path.basename(p))
 
     def dlg_properties(self):
         if not self.need_doc():

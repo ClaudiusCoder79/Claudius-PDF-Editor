@@ -121,6 +121,8 @@ PRESETS                Header/Footer, Watermark and Page numbers dialogs have Lo
 EDIT TEXT              Edit text now keeps the original font: the font inside the PDF when it has the letters, else an installed
                        font of the same family (Arial, Times, Calibri, Verdana ...), else the nearest standard font.
 EDIT PICTURES          Tools > Edit pictures: click a picture to replace, delete or save it, drag it to move it.
+REMOVE A PASSWORD     Open the PDF (enter the password), then Sign/Protect tab > Unprotect: you choose a name and a new file is
+                       saved without any password. The original stays as it was. You need to know the password.
 DELETE A PICTURE      Right-click it on the page > Delete this picture (a picture you have just added but not applied yet:
                        click it and press Delete). Undo (Ctrl+Z) brings it back.
 ALIGN PICTURES        Photos > Align (or right-click a picture > Align to page): centre horizontally / vertically / both,

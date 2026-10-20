@@ -1114,4 +1114,7 @@ T = {
 'The picture is already there.': ('Obraz jest już w tym miejscu.', 'Das Bild befindet sich bereits dort.', 'La imagen ya está ahí.', "L'immagine è già lì.", "L'image s'y trouve déjà."),
 'Show password': ('Pokaż hasło', 'Passwort anzeigen', 'Mostrar contraseña', 'Mostra password', 'Afficher le mot de passe'),
 'That password is not correct. Try again.\nPassword:': ('To hasło jest nieprawidłowe. Spróbuj ponownie.\nHasło:', 'Dieses Passwort ist nicht korrekt. Bitte erneut versuchen.\nPasswort:', 'Esa contraseña no es correcta. Inténtalo de nuevo.\nContraseña:', 'La password non è corretta. Riprova.\nPassword:', 'Ce mot de passe est incorrect. Réessayez.\nMot de passe :'),
+'Save the unprotected copy as': ('Zapisz kopię bez hasła jako', 'Ungeschützte Kopie speichern unter', 'Guardar la copia sin protección como', 'Salva la copia non protetta come', 'Enregistrer la copie non protégée sous'),
+'This replaces the protected original with an unprotected copy.\n\nContinue?': ('To zastąpi chroniony oryginał kopią bez hasła.\n\nKontynuować?', 'Dadurch wird das geschützte Original durch eine ungeschützte Kopie ersetzt.\n\nFortfahren?', 'Esto sustituye el original protegido por una copia sin protección.\n\n¿Continuar?', "Questo sostituisce l'originale protetto con una copia non protetta.\n\nContinuare?", "Cela remplace l'original protégé par une copie non protégée.\n\nContinuer ?"),
+'Saved without a password:': ('Zapisano bez hasła:', 'Ohne Passwort gespeichert:', 'Guardado sin contraseña:', 'Salvato senza password:', 'Enregistré sans mot de passe :'),
 }
