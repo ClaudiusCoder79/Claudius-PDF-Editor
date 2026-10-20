@@ -2370,15 +2370,8 @@ class ExtraTools(ExtraMarkup, ExtraConvert, Win11Tools):
         except Exception as ex:
             messagebox.showerror(APP, f"Could not open {os.path.basename(path)}:\n{ex}", parent=parent or self)
             return None
-        tries = 0
-        while doc.needs_pass:
-            pw = simpledialog.askstring(APP, f"{os.path.basename(path)} is password protected.\nPassword:", show="*",
-                                        parent=parent or self)
-            if not pw or not doc.authenticate(pw):
-                tries += 1
-                if not pw or tries >= 3:
-                    messagebox.showerror(APP, "Could not unlock the file.", parent=parent or self)
-                    return None
+        if doc.needs_pass and self.unlock_document(doc, os.path.basename(path), parent) is None:
+            return None
         return doc
 
     def _adopt_doc(self, doc, path=None, modified=False):

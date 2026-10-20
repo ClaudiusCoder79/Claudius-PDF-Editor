@@ -1112,4 +1112,6 @@ T = {
 'Align bottom': ('Wyrównaj do dołu', 'Unten ausrichten', 'Alinear abajo', 'Allinea in basso', 'Aligner en bas'),
 'Picture aligned to the page.': ('Obraz wyrównano do strony.', 'Bild an der Seite ausgerichtet.', 'Imagen alineada con la página.', 'Immagine allineata alla pagina.', 'Image alignée sur la page.'),
 'The picture is already there.': ('Obraz jest już w tym miejscu.', 'Das Bild befindet sich bereits dort.', 'La imagen ya está ahí.', "L'immagine è già lì.", "L'image s'y trouve déjà."),
+'Show password': ('Pokaż hasło', 'Passwort anzeigen', 'Mostrar contraseña', 'Mostra password', 'Afficher le mot de passe'),
+'That password is not correct. Try again.\nPassword:': ('To hasło jest nieprawidłowe. Spróbuj ponownie.\nHasło:', 'Dieses Passwort ist nicht korrekt. Bitte erneut versuchen.\nPasswort:', 'Esa contraseña no es correcta. Inténtalo de nuevo.\nContraseña:', 'La password non è corretta. Riprova.\nPassword:', 'Ce mot de passe est incorrect. Réessayez.\nMot de passe :'),
 }

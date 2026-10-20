@@ -621,14 +621,16 @@ class PdfEditor(V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools
 
         self._win11_init()
         self.restore_geometry()
-        for p in paths:
-            self.open_path(p)
         self.render()
         self.update_ui()
         self.after(200, self._refit)
         if not os.environ.get("CLAUDIUS_NO_RECOVERY"):
             self.after(700, self.start_recovery)
         self._close_splash()
+        if paths:
+            self.update()                       # the window must be on screen first: password and error boxes would stay invisible otherwise
+            for p in paths:
+                self.open_path(p)
 
     # ------------------------------------------------------------ splash screen
     def _show_splash(self):
@@ -1330,9 +1332,8 @@ class PdfEditor(V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools
             doc = fitz.open(stream=data, filetype="pdf")
             prot = None
             if doc.needs_pass:
-                pw = simpledialog.askstring(APP_NAME, "This PDF is password-protected.\nPassword:", show="*")
-                if not pw or not doc.authenticate(pw):
-                    messagebox.showerror(APP_NAME, "Wrong password.")
+                pw = self.unlock_document(doc, os.path.basename(p))
+                if pw is None:
                     return
                 prot = dict(user_pw=pw, owner_pw=pw, perms=doc.permissions)
         except Exception as ex:
@@ -1344,6 +1345,68 @@ class PdfEditor(V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools
         self.add_recent(p)
         self._v3_restore_position(p)
         self.status.config(text=f"Opened {os.path.basename(p)}" + ("  (password kept when you save)" if prot else ""))
+
+    def unlock_document(self, doc, name, parent=None, tries=3):
+        """Ask for the password until `doc` opens. Returns the password, or None when cancelled / not unlocked."""
+        msg = "This PDF is password-protected.\nPassword:"
+        for k in range(tries):
+            pw = self.ask_password(msg, name, parent)
+            if pw is None:
+                return None
+            try:
+                if doc.authenticate(pw):
+                    return pw
+            except Exception:
+                pass
+            msg = "That password is not correct. Try again.\nPassword:"
+        messagebox.showerror(APP_NAME, "Wrong password.", parent=parent or self)
+        return None
+
+    def ask_password(self, prompt, name="", parent=None):
+        """Small password box that always comes to the front. Returns the text, or None when cancelled."""
+        owner = parent or self
+        d = tk.Toplevel(owner)
+        d.title(APP_NAME)
+        d.configure(bg=TH.BG, padx=18, pady=14)
+        d.resizable(False, False)
+        try:
+            if owner.winfo_viewable():
+                d.transient(owner)
+        except tk.TclError:
+            pass
+        out = {}
+        if name:
+            ttk.Label(d, text=name, font=(UI_FONT, 9, "bold")).grid(row=0, column=0, columnspan=2, sticky="w")
+        ttk.Label(d, text=prompt, justify="left").grid(row=1, column=0, columnspan=2, sticky="w", pady=(4, 6))
+        var = tk.StringVar()
+        ent = ttk.Entry(d, textvariable=var, show="*", width=34)
+        ent.grid(row=2, column=0, columnspan=2, sticky="we")
+        shown = tk.BooleanVar(value=False)
+        ttk.Checkbutton(d, text="Show password", variable=shown,
+                        command=lambda: ent.config(show="" if shown.get() else "*")).grid(row=3, column=0, columnspan=2, sticky="w", pady=(6, 0))
+
+        def ok(_e=None):
+            out["v"] = var.get()
+            d.destroy()
+        bf = ttk.Frame(d)
+        bf.grid(row=4, column=0, columnspan=2, sticky="e", pady=(10, 0))
+        ttk.Button(bf, text="OK", command=ok).pack(side="left", padx=4)
+        ttk.Button(bf, text="Cancel", command=d.destroy).pack(side="left")
+        d.bind("<Return>", ok)
+        d.bind("<Escape>", lambda e: d.destroy())
+        d.update_idletasks()
+        w, h = d.winfo_reqwidth(), d.winfo_reqheight()
+        d.geometry("+%d+%d" % ((d.winfo_screenwidth() - w) // 2, (d.winfo_screenheight() - h) // 3))
+        d.attributes("-topmost", True)                      # a hidden dialog looks like a frozen program
+        d.lift()
+        d.focus_force()
+        ent.focus_set()
+        try:
+            d.grab_set()
+        except tk.TclError:
+            pass
+        d.wait_window()
+        return out.get("v") or None
 
     def save(self):
         if not self.need_doc():
