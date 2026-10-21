@@ -584,8 +584,39 @@ class FrameTools:
             area |= fitz.Rect(x["bbox"])
         self.delete_text_area(area, block)
 
-    def delete_text_area(self, area, block=False):
-        pg = self.page()
+    def _frame_box_of(self, pg, area):
+        """the filled / outlined box that was drawn around this text (a text frame with Frame / Background), if it holds
+        nothing else"""
+        page_area = pg.rect.width * pg.rect.height
+        words = [fitz.Rect(w[:4]) for w in pg.get_text("words")]
+        best = None
+        for d in pg.get_drawings():
+            r = fitz.Rect(d["rect"])
+            if r.is_empty or not r.contains(area) or r.width * r.height > 0.6 * page_area:
+                continue
+            if not any(it[0] == "re" for it in d["items"]) and len(d["items"]) < 4:
+                continue
+            others = [w for w in words if r.intersects(w) and not area.intersects(w)]
+            if others:
+                continue
+            if best is None or r.width * r.height < fitz.Rect(best["rect"]).width * fitz.Rect(best["rect"]).height:
+                best = d
+        return best
+
+    def _lines_covered(self, pg, area):
+        """straight lines (underline / strike-through) lying inside the area: [(p1, p2, colour, width)]"""
+        out = []
+        big = fitz.Rect(area) + (-1, -2, 1, 2)
+        for d in pg.get_drawings():
+            r = fitz.Rect(d["rect"])
+            if d.get("fill") is None and big.contains(r) and r.height < 3 and all(it[0] == "l" for it in d["items"]):
+                for it in d["items"]:
+                    out.append((fitz.Point(it[1]), fitz.Point(it[2]), d.get("color") or (0, 0, 0), d.get("width") or 0.5))
+        return out
+
+    def _remove_text(self, pg, area, block, keep_box=None):
+        """take the text out of the page and also what belongs to it: underline / strike-through lines and the box that
+        was drawn around it. Nothing else on the page is touched."""
         red = fitz.Rect(area)
         if block:
             red.y0 += 1
@@ -595,12 +626,26 @@ class FrameTools:
             red.y1 -= area.height * 0.08
         red.x0 += 0.5
         red.x1 -= 0.5
+        none_img = getattr(fitz, "PDF_REDACT_IMAGE_NONE", 0)
+        none_gfx = getattr(fitz, "PDF_REDACT_LINE_ART_NONE", 0)
+        pg.add_redact_annot(red, fill=False)
+        pg.apply_redactions(images=none_img, graphics=none_gfx)
+        # second pass: only vector graphics that lie completely inside the area (no text, no pictures)
+        box = keep_box if keep_box is not None else self._frame_box_of(pg, fitz.Rect(area))
+        zone = (fitz.Rect(box["rect"]) + (-0.5, -0.5, 0.5, 0.5)) if box else (fitz.Rect(area) + (-1, -2, 1, 2))
+        covered = getattr(fitz, "PDF_REDACT_LINE_ART_REMOVE_IF_COVERED", None)
+        no_text = getattr(fitz, "PDF_REDACT_TEXT_NONE", None)
+        if covered is not None:
+            pg.add_redact_annot(zone, fill=False)
+            kw = {"text": no_text} if no_text is not None else {}
+            try:
+                pg.apply_redactions(images=none_img, graphics=covered, **kw)
+            except TypeError:
+                pg.apply_redactions(images=none_img, graphics=covered)
 
-        def work():
-            pg.add_redact_annot(red, fill=False)
-            pg.apply_redactions(images=getattr(fitz, "PDF_REDACT_IMAGE_NONE", 0),
-                                graphics=getattr(fitz, "PDF_REDACT_LINE_ART_NONE", 0))
-        self._run_edit(work, msg=_tr("Text deleted."))
+    def delete_text_area(self, area, block=False):
+        pg = self.page()
+        self._run_edit(lambda: self._remove_text(pg, fitz.Rect(area), block), msg=_tr("Text deleted."))
 
     def move_text_line(self, p0, p1, block=False):
         """drag a line (or with Shift the whole paragraph) of existing text to another place"""
@@ -618,20 +663,14 @@ class FrameTools:
             area |= fitz.Rect(x["bbox"])
         d = fitz.Point(p1) - fitz.Point(p0)
         pg = self.page()
-        red = fitz.Rect(area)
-        if block:
-            red.y0 += 1
-            red.y1 -= 1
-        else:
-            red.y0 += area.height * 0.08
-            red.y1 -= area.height * 0.08
-        red.x0 += 0.5
-        red.x1 -= 0.5
 
         def work():
-            pg.add_redact_annot(red, fill=False)
-            pg.apply_redactions(images=getattr(fitz, "PDF_REDACT_IMAGE_NONE", 0),
-                                graphics=getattr(fitz, "PDF_REDACT_LINE_ART_NONE", 0))
+            lines_ = self._lines_covered(pg, area)
+            box = self._frame_box_of(pg, fitz.Rect(area))
+            self._remove_text(pg, fitz.Rect(area), block, box)
+            if box is not None:                                   # the frame around the text moves with it
+                pg.draw_rect(fitz.Rect(box["rect"]) + (d.x, d.y, d.x, d.y), color=box.get("color"), fill=box.get("fill"),
+                             width=box.get("width") or 0.75)
             for ln in lines:
                 for sp in ln["spans"]:
                     txt = sp["text"]
@@ -641,4 +680,6 @@ class FrameTools:
                                                 (self.doc, pg, sp)))
                     pg.insert_text(fitz.Point(sp["origin"]) + d, txt, fontsize=sp["size"],
                                    color=tuple(EX._int_color(sp["color"])), rotate=rot, **fk)
+            for p1, p2, col, wd in lines_:
+                pg.draw_line(p1 + d, p2 + d, color=col, width=wd)
         self._run_edit(work, msg=_tr("Text moved."))

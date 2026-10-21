@@ -751,9 +751,7 @@ class TextTools:
             self.tt_remember(spec)
 
         def work():
-            pg.add_redact_annot(red_rect(), fill=False)
-            pg.apply_redactions(images=getattr(fitz, "PDF_REDACT_IMAGE_NONE", 0),
-                                graphics=getattr(fitz, "PDF_REDACT_LINE_ART_NONE", 0))
+            self._remove_text(pg, fitz.Rect(area), block)          # also takes old underline / frame with it
             write_replacement(pg, spec, new, fk, area, rot, sp["origin"], size, block)
         self._run_edit(work, msg=_tr("Text changed."))
 
