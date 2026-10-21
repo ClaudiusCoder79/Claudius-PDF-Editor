@@ -103,7 +103,38 @@ class QuickTools:
         else:
             self.qt_show()
 
+    def _qt_main(self):
+        """the module of the main window (it is '__main__' when the program is started directly / as the EXE)"""
+        return sys.modules[type(self).__module__]
+
+    def _qt_geometry_ok(self, geo):
+        """saved window position: only when it is (at least partly) on a screen that still exists"""
+        try:
+            import re
+            m = re.fullmatch(r"(\d+)x(\d+)([+-]\d+)([+-]\d+)", geo)
+            if not m:
+                return False
+            w, h, x, y = int(m[1]), int(m[2]), int(m[3]), int(m[4])
+            sw, sh = self.winfo_screenwidth(), self.winfo_screenheight()
+            return w >= 60 and h >= 60 and x > -w + 60 and y > -20 and x < sw - 60 and y < sh - 60
+        except Exception:
+            return False
+
     def qt_show(self):
+        try:
+            self._qt_show()
+        except Exception as ex:                      # never fail silently: the toolbar must not just vanish
+            from tkinter import messagebox
+            messagebox.showerror("Claudius PDF Editor", "The quick toolbar could not be opened:\n%s" % ex)
+            w = self.__dict__.get("_qt_win")
+            if w is not None:
+                try:
+                    w.destroy()
+                except tk.TclError:
+                    pass
+            self._qt_win = None
+
+    def _qt_show(self):
         if self._qt_win is not None and self._qt_win.winfo_exists():
             self._qt_win.deiconify()
             self._qt_win.lift()
@@ -117,10 +148,10 @@ class QuickTools:
             pass
         cfg = get_setting("quick_tools", {}) or {}
         geo = cfg.get("geometry")
-        w.geometry(geo if isinstance(geo, str) and geo.count("x") == 1 and "+" in geo else "%dx%d+%d+%d" % (
+        w.geometry(geo if isinstance(geo, str) and self._qt_geometry_ok(geo) else "%dx%d+%d+%d" % (
             CELL_W * 4 + 16, 190, self.winfo_rootx() + 260, self.winfo_rooty() + 120))
         w.minsize(CELL_W + 16, 90)
-        from claudius import RIBBON_BG
+        RIBBON_BG = self._qt_main().RIBBON_BG
         w.configure(bg=RIBBON_BG)
         self._qt_flow = tk.Frame(w, bg=RIBBON_BG)
         self._qt_flow.pack(fill="both", expand=True, padx=4, pady=4)
@@ -164,7 +195,7 @@ class QuickTools:
         self._qt_forget_buttons()
         for c in self._qt_flow.winfo_children():
             c.destroy()
-        from claudius import RibbonButton
+        RibbonButton = self._qt_main().RibbonButton
         self._qt_btns = []
         for key in self.qt_items():
             d = self.qt_reg[key]

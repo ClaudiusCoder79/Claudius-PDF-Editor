@@ -116,6 +116,8 @@ REMOVE TEXT QUICKLY    * Right-click any text on the page > Delete this line of 
                        * A new text frame has a red cross on top - one click removes it. The Delete key does the same.
                        * The Edit text window has a red "Delete text" button. Ctrl+Z brings deleted text back.
 QUICK TOOLBAR          Drag an icon to a new place to change the order (a blue bar shows where it lands).
+FIX                    The quick toolbar now opens in the installed / EXE version too, and a saved position that is off screen
+                       (e.g. a second monitor that is gone) is ignored.
 CLEAN DELETE / MOVE      Deleting, moving or editing text now also removes its underline / strike-through lines and the frame or
                        background that was drawn around it (only when that box holds nothing else), so no leftovers stay behind.
 
