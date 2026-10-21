@@ -510,7 +510,28 @@ class ViewTools:
         return True
 
     def _on_motion(self, e):
-        if self.doc is None or self.tool.get() != "view":
+        if self.doc is None:
+            return
+        if self.tf and self.tf_motion(e):
+            return
+        t = self.tool.get()
+        if t in ("edittext", "text", "textbox"):
+            now = time.monotonic()
+            if now - self._motion_t < 0.05:
+                return
+            self._motion_t = now
+            want = self._tool_cursor(t)
+            if t == "edittext":
+                try:
+                    pt = self._canvas_pt(self.canvas.canvasx(e.x), self.canvas.canvasy(e.y))
+                    if self.find_line(pt)[1]:
+                        want = self._tool_cursor("move")
+                except Exception:
+                    pass
+            if self.canvas.cget("cursor") != want:
+                self.canvas.config(cursor=want)
+            return
+        if t != "view":
             return
         if self.presenting:
             self._pres_hide_cursor_later()
@@ -524,7 +545,7 @@ class ViewTools:
             over = 0 <= i < len(self.doc) and nearest_word(self._page_words(i), x, y, max_dist=1) is not None
         except Exception:
             over = False
-        want = "xterm" if over else "fleur"
+        want = self._tool_cursor("beam" if over else "view")
         if self.canvas.cget("cursor") != want:
             self.canvas.config(cursor=want)
 

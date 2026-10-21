@@ -1,4 +1,4 @@
-# Claudius PDF Editor 3.3 - versions it was tested with are the minimum; newer is fine (keep PyMuPDF up to date: it parses untrusted PDFs)
+# Claudius PDF Editor 3.4 - versions it was tested with are the minimum; newer is fine (keep PyMuPDF up to date: it parses untrusted PDFs)
 pymupdf>=1.28.2
 pillow>=12.3.0
 python-docx>=1.2.0

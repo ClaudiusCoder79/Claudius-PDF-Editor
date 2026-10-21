@@ -639,8 +639,15 @@ class TextTools:
             d.destroy()
             return "break"
 
+        def delete_it():
+            res["v"] = (None, collect())
+            d.destroy()
+
         bf = tk.Frame(d, bg=BG)
         bf.grid(row=1, column=0, columnspan=2, sticky="e", pady=(12, 0))
+        if edit:
+            tk.Button(bf, text=_tr("Delete text"), command=delete_it, bg="#d92d20", fg="white", relief="flat", padx=12,
+                      pady=2, cursor="hand2", font=(UI_FONT, 9)).pack(side="left", padx=(0, 30))
         tk.Label(bf, text=_tr("Ctrl+Enter = Apply"), bg=BG, fg=TH.TERTIARY, font=(UI_FONT, 8)).pack(side="left", padx=(0, 16))
         ttk.Button(bf, text=_tr("Apply"), command=apply).pack(side="left", padx=4)
         ttk.Button(bf, text=_tr("Cancel"), command=d.destroy).pack(side="left")
@@ -733,6 +740,9 @@ class TextTools:
             write_replacement(tp, s, txt, fk, area, rot, sp["origin"], size, block)
         r = self.tt_dialog(_tr("Edit text"), old, spec0, painter, region, erase=view, original=original, edit=True, box=False,
                            hint="Change the text:")
+        if r is not None and r[0] is None:                       # "Delete text"
+            self.delete_text_area(area, block)
+            return
         if r is None or (r[0].strip() == old.strip() and not self._tt_changed(r[1], spec0)):
             return
         new, spec = r[0].rstrip("\n"), r[1]

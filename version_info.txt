@@ -5,11 +5,11 @@ VSVersionInfo(
     StringFileInfo([StringTable('040904B0', [
       StringStruct('CompanyName', 'Michal Czapla & Claude AI'),
       StringStruct('FileDescription', 'Claudius PDF Editor'),
-      StringStruct('FileVersion', '3.3.0.0'),
+      StringStruct('FileVersion', '3.4.0.0'),
       StringStruct('InternalName', 'Claudius PDF Editor'),
       StringStruct('OriginalFilename', 'Claudius PDF Editor.exe'),
       StringStruct('ProductName', 'Claudius PDF Editor'),
-      StringStruct('ProductVersion', '3.3.0.0')])]),
+      StringStruct('ProductVersion', '3.4.0.0')])]),
     VarFileInfo([VarStruct('Translation', [1033, 1200])])
   ]
 )

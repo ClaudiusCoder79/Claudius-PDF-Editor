@@ -45,7 +45,7 @@ except ImportError:
     sys.exit("claudius_extra.py is missing - keep it in the same folder as claudius.py")
 
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "3.3"
+APP_VERSION = "3.4"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -1234,6 +1234,9 @@ class PdfEditor(TextTools, FrameTools, QuickTools, V3Tools, V3bTools, ViewTools,
     def _key_delete(self, _e):
         if self._typing():
             return
+        if self.tf:                                   # a text frame is open: Delete removes it
+            self.tf_cancel()
+            return False
         if self.sel in self.floats and self.sel is not None:
             self.img_delete()
         else:
@@ -1275,7 +1278,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, V3Tools, V3bTools, ViewTools,
         for name, btns in self.tool_buttons.items():
             for b in btns:
                 b.set_active(name == t)
-        self.canvas.config(cursor="fleur" if t == "view" else "crosshair")
+        self.canvas.config(cursor=self._tool_cursor(t))
         self.status.config(text=self.HINTS.get(t) or EXTRA_HINTS.get(t, ""))
 
     def pick_color(self):
@@ -2492,7 +2495,8 @@ class PdfEditor(TextTools, FrameTools, QuickTools, V3Tools, V3bTools, ViewTools,
             return
         if not self.floats:
             self._cont_focus_at(e)
-            self.annot_menu(e)
+            if not self.annot_menu(e):
+                self.text_line_menu(e)
             return
         vx, vy = self._c2v(self.canvas.canvasx(e.x), self.canvas.canvasy(e.y))
         for o in reversed(self.floats):
@@ -2515,7 +2519,8 @@ class PdfEditor(TextTools, FrameTools, QuickTools, V3Tools, V3bTools, ViewTools,
                 m.add_command(label="Delete", command=self.img_delete)
                 m.tk_popup(e.x_root, e.y_root)
                 return
-        self.annot_menu(e)
+        if not self.annot_menu(e):
+            self.text_line_menu(e)
 
     def _key_arrow(self, dx, dy, e):
         if self._typing():

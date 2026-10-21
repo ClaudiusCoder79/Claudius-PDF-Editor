@@ -6,6 +6,7 @@ screen), resize it and the buttons re-flow. Right-click any ribbon button -> "Ad
 on the quick toolbar to pick buttons from a list. Right-click a quick button to remove it or move it.
 What is on the toolbar, where it is and whether it is shown is remembered.
 """
+import sys
 import tkinter as tk
 from tkinter import ttk
 
@@ -230,7 +231,7 @@ class QuickTools:
         x = ref.winfo_x() - 3 if i < len(btns) else ref.winfo_x() + ref.winfo_width() + 1
         mark.place(x=x, y=ref.winfo_y(), width=3, height=ref.winfo_height())
         mark.lift()
-        self._qt_flow.config(cursor="fleur")
+        self._qt_flow.config(cursor="size" if sys.platform.startswith("win") else "fleur")
 
     def _qt_drag_end(self, e):
         d, self._qt_drag = self.__dict__.get("_qt_drag"), None

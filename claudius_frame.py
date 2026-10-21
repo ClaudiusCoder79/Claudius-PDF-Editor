@@ -7,6 +7,7 @@ bold, italic, underline, strike, colour, alignment, frame, background). "Apply" 
 The Edit text tool can also drag existing text to a new place.
 """
 import math
+import sys
 import tkinter as tk
 from tkinter import ttk, colorchooser, messagebox
 from tkinter import font as tkfont
@@ -30,6 +31,15 @@ RING = 6            # grab ring around the frame (pixels)
 HANDLE = 5          # half size of a resize square
 MIN_W, MIN_H = 36.0, 18.0
 FILL0 = (1.0, 0.96, 0.75)
+_WIN = sys.platform.startswith("win")
+# the normal Windows pointers on Windows, the nearest ones elsewhere
+CUR = {"move": "size" if _WIN else "fleur", "text": "ibeam" if _WIN else "xterm", "hand": "hand2",
+       "cross": "crosshair", "ns": "size_ns" if _WIN else "sb_v_double_arrow",
+       "we": "size_we" if _WIN else "sb_h_double_arrow",
+       "nwse": "size_nw_se" if _WIN else "bottom_right_corner", "nesw": "size_ne_sw" if _WIN else "bottom_left_corner",
+       "arrow": "arrow"}
+_HANDLE_CUR = {"nw": "nwse", "se": "nwse", "ne": "nesw", "sw": "nesw", "n": "ns", "s": "ns", "e": "we", "w": "we",
+               "move": "move", "delete": "arrow"}
 
 
 def needed_height(pg, spec, text, fk, width):
@@ -54,8 +64,11 @@ class FrameTools:
     _mvl = None          # line grabbed by the Edit text tool
 
     # ================================================================= helpers
-    def _tf_zoom(self):
-        return self.zoom
+    @staticmethod
+    def _tool_cursor(t):
+        """pointer for a tool: the normal Windows ones (hand, I-beam, cross-hair, move arrows)"""
+        return {"view": CUR["hand"], "beam": CUR["text"], "text": CUR["text"], "textbox": CUR["cross"],
+                "edittext": CUR["text"], "move": CUR["move"]}.get(t, CUR["cross"])
 
     def tf_rect_c(self):
         tf = self.tf
@@ -75,6 +88,8 @@ class FrameTools:
         if not self.tf:
             return None
         x0, y0, x1, y1 = self.tf_rect_c()
+        if x0 - RING + 40 <= cx <= x0 - RING + 58 and y0 - RING - 18 <= cy <= y0 - RING:
+            return "delete"                                         # the little cross: remove the frame
         if x0 - RING + 14 <= cx <= x0 - RING + 38 and y0 - RING - 18 <= cy <= y0 - RING:
             return "move"                                           # the little grip on top
         for name, (hx, hy) in self.tf_handles().items():
@@ -110,7 +125,7 @@ class FrameTools:
         self._tf_bar()
         self._tf_load_vars()
         t = tk.Text(self.canvas, wrap="word", undo=True, bd=0, relief="flat", highlightthickness=0,
-                    insertwidth=2, cursor="xterm", exportselection=False)
+                    insertwidth=2, cursor=CUR["text"], exportselection=False)
         tf = self.tf
         tf["text"] = t
         tf["font"] = tkfont.Font(family=_family(spec["font"]), size=-10)
@@ -249,6 +264,8 @@ class FrameTools:
         gx, gy = x0 - RING + 14, y0 - RING - 17                  # grip on top
         c.create_rectangle(gx, gy, gx + 24, gy + 17, fill=ACCENT, outline=ACCENT, tags="tfc")
         c.create_text(gx + 12, gy + 8, text="✥", fill="white", font=(UI_FONT, 10), tags="tfc")
+        c.create_rectangle(gx + 26, gy, gx + 44, gy + 17, fill="#d92d20", outline="#d92d20", tags="tfc")
+        c.create_text(gx + 35, gy + 8, text="✕", fill="white", font=(UI_FONT, 9, "bold"), tags="tfc")
         for hx, hy in self.tf_handles().values():
             c.create_rectangle(hx - HANDLE, hy - HANDLE, hx + HANDLE, hy + HANDLE, fill="white", outline=ACCENT,
                                width=2, tags="tfc")
@@ -259,6 +276,7 @@ class FrameTools:
         """the format bar floats just above the frame (below it when there is no room above)"""
         try:
             bar = self.tf_bar
+            bar.update_idletasks()
             x0, y0, x1, y1 = self.tf_rect_c()
             sx0, sy0 = x0 - self.canvas.canvasx(0), y0 - self.canvas.canvasy(0)
             sy1 = y1 - self.canvas.canvasy(0)
@@ -433,6 +451,9 @@ class FrameTools:
             if self.cont:
                 self._cont_focus(self.tf["page"])
             hit = self.tf_hit(cx, cy)
+            if hit == "delete":
+                self.tf_cancel()
+                return True
             if hit:
                 self.canvas.focus_set()
                 self._tfd = {"mode": hit, "last": (cx, cy)}
@@ -445,6 +466,25 @@ class FrameTools:
             self._tfd = {"mode": "new", "start": (cx, cy), "item": None}
             return True
         return False
+
+    def tf_motion(self, e):
+        """pointer shape over the frame (resize arrows on the squares, move arrows on the edge); True when it is on the frame"""
+        if not self.tf:
+            return False
+        keep = self.page_no
+        try:
+            if self.cont:
+                self._cont_focus(self.tf["page"])
+            hit = self.tf_hit(self.canvas.canvasx(e.x), self.canvas.canvasy(e.y))
+        finally:
+            if self.cont:
+                self._cont_focus(keep)
+        if not hit:
+            return False
+        want = CUR[_HANDLE_CUR[hit]]
+        if self.canvas.cget("cursor") != want:
+            self.canvas.config(cursor=want)
+        return True
 
     def tf_drag(self, e):
         d = self._tfd
@@ -515,6 +555,52 @@ class FrameTools:
             self._mvl = self.find_line(self._canvas_pt(self.canvas.canvasx(e.x), self.canvas.canvasy(e.y)))
         except Exception:
             self._mvl = None
+
+    # ================================================================= removing text
+    def text_line_menu(self, e):
+        """right-click on text: edit / delete it. True when a menu was shown"""
+        if self.doc is None:
+            return False
+        pt = self._canvas_pt(self.canvas.canvasx(e.x), self.canvas.canvasy(e.y))
+        b, l = self.find_line(pt)
+        if not l:
+            return False
+        m = tk.Menu(self, tearoff=0)
+        m.add_command(label=_tr("Edit this text..."), command=lambda: self.edit_text_at(pt))
+        m.add_command(label=_tr("Delete this line of text"), command=lambda: self.delete_text_at(pt, False))
+        if len([x for x in b["lines"] if x["spans"]]) > 1:
+            m.add_command(label=_tr("Delete this paragraph"), command=lambda: self.delete_text_at(pt, True))
+        m.tk_popup(e.x_root, e.y_root)
+        return True
+
+    def delete_text_at(self, pt, block=False):
+        b, l = self.find_line(pt)
+        if not l:
+            self.status.config(text=_tr("There is no text at that spot (scanned pages need OCR first)."))
+            return
+        lines = [x for x in b["lines"] if x["spans"]] if block else [l]
+        area = fitz.Rect(lines[0]["bbox"])
+        for x in lines[1:]:
+            area |= fitz.Rect(x["bbox"])
+        self.delete_text_area(area, block)
+
+    def delete_text_area(self, area, block=False):
+        pg = self.page()
+        red = fitz.Rect(area)
+        if block:
+            red.y0 += 1
+            red.y1 -= 1
+        else:
+            red.y0 += area.height * 0.08
+            red.y1 -= area.height * 0.08
+        red.x0 += 0.5
+        red.x1 -= 0.5
+
+        def work():
+            pg.add_redact_annot(red, fill=False)
+            pg.apply_redactions(images=getattr(fitz, "PDF_REDACT_IMAGE_NONE", 0),
+                                graphics=getattr(fitz, "PDF_REDACT_LINE_ART_NONE", 0))
+        self._run_edit(work, msg=_tr("Text deleted."))
 
     def move_text_line(self, p0, p1, block=False):
         """drag a line (or with Shift the whole paragraph) of existing text to another place"""
