@@ -118,6 +118,8 @@ REMOVE TEXT QUICKLY    * Right-click any text on the page > Delete this line of 
 QUICK TOOLBAR          Drag an icon to a new place to change the order (a blue bar shows where it lands).
 FIX                    The quick toolbar now opens in the installed / EXE version too, and a saved position that is off screen
                        (e.g. a second monitor that is gone) is ignored.
+STAR BUTTON            A star button next to Open / Save / Save As / Print in the top bar shows or hides the quick toolbar (blue
+                       frame = shown). Shortcut: Ctrl+Shift+Q. Closing the toolbar window with its X hides it the same way.
 CLEAN DELETE / MOVE      Deleting, moving or editing text now also removes its underline / strike-through lines and the frame or
                        background that was drawn around it (only when that box holds nothing else), so no leftovers stay behind.
 

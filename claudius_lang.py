@@ -1160,4 +1160,5 @@ T = {
 'Delete this paragraph': ('Usuń ten akapit', 'Diesen Absatz löschen', 'Eliminar este párrafo', 'Elimina questo paragrafo', 'Supprimer ce paragraphe'),
 'Edit this text...': ('Edytuj ten tekst...', 'Diesen Text bearbeiten...', 'Editar este texto...', 'Modifica questo testo...', 'Modifier ce texte...'),
 'Text deleted.': ('Usunięto tekst.', 'Text gelöscht.', 'Texto eliminado.', 'Testo eliminato.', 'Texte supprimé.'),
+'Show / hide the quick toolbar': ('Pokaż / ukryj pasek szybkiego dostępu', 'Schnellleiste ein-/ausblenden', 'Mostrar / ocultar la barra rápida', 'Mostra / nascondi la barra rapida', 'Afficher / masquer la barre rapide'),
 }

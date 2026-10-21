@@ -120,6 +120,13 @@ class QuickTools:
         except Exception:
             return False
 
+    def _qt_sync(self):
+        """the star button in the top bar shows whether the toolbar is open"""
+        b = self.__dict__.get("qt_top_btn")
+        w = self._qt_win
+        if b is not None:
+            b.set_active(w is not None and w.winfo_exists())
+
     def qt_show(self):
         try:
             self._qt_show()
@@ -133,11 +140,13 @@ class QuickTools:
                 except tk.TclError:
                     pass
             self._qt_win = None
+        self._qt_sync()
 
     def _qt_show(self):
         if self._qt_win is not None and self._qt_win.winfo_exists():
             self._qt_win.deiconify()
             self._qt_win.lift()
+            self._qt_sync()
             return
         w = self._qt_win = tk.Toplevel(self)
         w.title(_tr("Quick tools"))
@@ -167,6 +176,7 @@ class QuickTools:
             self._qt_forget_buttons()
             w.destroy()
         self._qt_win = None
+        self._qt_sync()
 
     def _qt_geometry(self):
         w = self._qt_win

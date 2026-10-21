@@ -485,6 +485,7 @@ class QuickButton(tk.Canvas):
         super().__init__(parent, width=side, height=side, bg=BAR_BG, highlightthickness=0, cursor="hand2")
         self._icon, self._tip, self.command, self._color = icon, tip, command, color
         self.hover = self.pressed = False
+        self.active = False
         self._tipwin = self._tipjob = None
         self.bind("<Enter>", self._enter)
         self.bind("<Leave>", self._leave)
@@ -498,9 +499,15 @@ class QuickButton(tk.Canvas):
         self._img = TH.tile_photo(self, self._qs, self._color, state, S)
         c = (self._qs + 2 * S(4)) // 2
         lift = S(1) if self.pressed else 0
+        if self.active:                                   # switched on: a ring around the tile
+            self.create_rectangle(1, 1, 2 * c - 1, 2 * c - 1, outline=ACCENT, width=2)
         self.create_image(c, c, image=self._img)
         self.create_text(c + 1, c + lift + 1, text=self._icon, font=(ICON_FONT, 11), fill="#14305c")
         self.create_text(c, c + lift, text=self._icon, font=(ICON_FONT, 11), fill="white")
+
+    def set_active(self, on):
+        self.active = bool(on)
+        self._paint()
 
     def _enter(self, _e):
         self.hover = True
@@ -706,6 +713,9 @@ class PdfEditor(TextTools, FrameTools, QuickTools, V3Tools, V3bTools, ViewTools,
             qb = QuickButton(qa, icon, f"{tr(label)}  ({keys})", cmd, col)
             qb.pack(side="left", padx=1, pady=S(3))
             self.quick_buttons.append(qb)
+        self.qt_top_btn = QuickButton(qa, "★", f"{tr('Show / hide the quick toolbar')}  (Ctrl+Shift+Q)", self.qt_toggle,
+                                      TH.TILE_COLORS[4 % len(TH.TILE_COLORS)])
+        self.qt_top_btn.pack(side="left", padx=(8, 1), pady=S(3))
         tk.Frame(top, bg=RIBBON_LINE, width=1).pack(side="left", fill="y", pady=S(8), padx=(0, 8))
 
         self.file_menu = tk.Menu(self, tearoff=0)
@@ -1206,6 +1216,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, V3Tools, V3bTools, ViewTools,
         self.bind("<Control-y>", lambda e: self.redo())
         self.bind("<Control-Z>", lambda e: self.redo())
         self.bind("<Control-p>", lambda e: self.do_print())
+        self.bind("<Control-Q>", lambda e: self.qt_toggle())
         self.bind("<Control-c>", self._key_copy)
         self.bind("<Control-w>", lambda e: self.close_tab())
         self.bind("<Control-Tab>", lambda e: self.next_tab(1))
