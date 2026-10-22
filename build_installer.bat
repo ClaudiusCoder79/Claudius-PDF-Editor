@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0"
 call build_exe.bat
-if not exist "dist\Claudius PDF Editor.exe" (
+if not exist "dist\Claudius PDF Editor\Claudius PDF Editor.exe" (
   echo The program was not built - see the messages above.
   pause
   exit /b 1
@@ -17,5 +17,5 @@ if "%ISCC%"=="" (
 )
 "%ISCC%" installer.iss
 echo.
-echo Done. Your installer is in the "installer" folder: Claudius-PDF-Editor-Setup-3.6.exe
+echo Done. Your installer is in the "installer" folder: Claudius-PDF-Editor-Setup-3.7.exe
 pause

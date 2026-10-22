@@ -7,6 +7,8 @@ Requirements:  Python 3.9+   and   pip install pymupdf pillow
 Keep claudius_extra.py in the same folder as this file.
 Run:           python claudius.py   (or double-click run.bat)
 """
+import time as _time
+_T0 = _time.time()                # start-up timing (written to ~/.claudius/startup.log)
 import copy
 import io
 import math
@@ -40,12 +42,12 @@ import claudius_theme as TH
 TH.init()                        # light / dark look (File > Appearance); also before any window exists
 
 try:
-    from claudius_extra import (safe_zoom, safe_dpi, SCALE, S, ExtraTools, EXTRA_HINTS, EXTRA_TOOLS, RECT_TOOLS, HL_COLORS, CONVERT_KINDS)
+    from claudius_extra import (CONFIG_DIR, safe_zoom, safe_dpi, SCALE, S, ExtraTools, EXTRA_HINTS, EXTRA_TOOLS, RECT_TOOLS, HL_COLORS, CONVERT_KINDS)
 except ImportError:
     sys.exit("claudius_extra.py is missing - keep it in the same folder as claudius.py")
 
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "3.6"
+APP_VERSION = "3.7"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF-Editor"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -561,6 +563,7 @@ class Snap(tuple):
 
 class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools, tk.Tk):
     def __init__(self, path=None):
+        self._t_build = _time.time()
         super().__init__()
         self._splash = None
         if not os.environ.get("CLAUDIUS_NO_SPLASH"):
@@ -640,10 +643,37 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         if not os.environ.get("CLAUDIUS_NO_RECOVERY"):
             self.after(700, self.start_recovery)
         self._close_splash()
+        self._log_startup()
         if paths:
             self.update()                       # the window must be on screen first: password and error boxes would stay invisible otherwise
             for p in paths:
                 self.open_path(p)
+
+    def _log_startup(self):
+        """one line per start in ~/.claudius/startup.log: seconds since the process began, program loading, window building"""
+        try:
+            now = _time.time()
+            since = ""
+            if sys.platform == "win32":                 # includes the time the EXE needed before Python even began
+                import ctypes
+                from ctypes import wintypes
+                c, e, k, u = (wintypes.FILETIME() for _ in range(4))
+                ctypes.windll.kernel32.GetProcessTimes(ctypes.windll.kernel32.GetCurrentProcess(), ctypes.byref(c), ctypes.byref(e), ctypes.byref(k), ctypes.byref(u))
+                born = ((c.dwHighDateTime << 32) + c.dwLowDateTime) / 1e7 - 11644473600
+                since = "  since process start %.1fs" % (now - born)
+            line = "%s  v%s  program loaded in %.1fs, window ready %.1fs after that%s%s\n" % (
+                time.strftime("%Y-%m-%d %H:%M:%S"), APP_VERSION, self._t_build - _T0, now - self._t_build, since,
+                "  (single file)" if getattr(sys, "_MEIPASS", None) and not os.path.isdir(os.path.join(os.path.dirname(sys.executable), "_internal")) else "")
+            os.makedirs(CONFIG_DIR, exist_ok=True)
+            p = os.path.join(CONFIG_DIR, "startup.log")
+            try:
+                old = open(p, encoding="utf-8").read().splitlines()[-29:]
+            except Exception:
+                old = []
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("\n".join(old + [line.rstrip("\n")]) + "\n")
+        except Exception:
+            pass
 
     # ------------------------------------------------------------ splash screen
     def _show_splash(self):

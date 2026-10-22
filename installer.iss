@@ -1,16 +1,16 @@
 ; Claudius PDF Editor installer - build with Inno Setup 6.3 or newer (free, jrsoftware.org)
-; Needs dist\Claudius PDF Editor.exe (run build_exe.bat first) and claudius.ico / README.txt next to this file.
+; Needs the folder dist\Claudius PDF Editor (run build_exe.bat first) and claudius.ico / README.txt next to this file.
 
 #define MyAppName "Claudius PDF Editor"
-#define MyAppVersion "3.6"
+#define MyAppVersion "3.7"
 #define MyAppExe "Claudius PDF Editor.exe"
-; the program is taken from dist\Claudius PDF Editor.exe, or from Claudius PDF Editor.exe placed next to this script
-#if FileExists("dist\Claudius PDF Editor.exe")
-  #define ExeSource "dist\Claudius PDF Editor.exe"
-#elif FileExists("Claudius PDF Editor.exe")
-  #define ExeSource "Claudius PDF Editor.exe"
+; the program folder is taken from dist\Claudius PDF Editor (made by build_exe.bat), or from a folder "Claudius PDF Editor" placed next to this script
+#if DirExists("dist\Claudius PDF Editor")
+  #define ExeSource "dist\Claudius PDF Editor"
+#elif DirExists("Claudius PDF Editor")
+  #define ExeSource "Claudius PDF Editor"
 #else
-  #error Claudius PDF Editor.exe not found. Put Claudius PDF Editor.exe in the same folder as installer.iss (or in a folder named dist) and compile again.
+  #error The program folder was not found. Run build_exe.bat first (it makes dist\Claudius PDF Editor) and compile again.
 #endif
 
 [Setup]
@@ -53,7 +53,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "openwith"; Description: "Add Claudius PDF Editor to the ""Open with"" list and to Windows Default apps (PDF files)"; GroupDescription: "File integration:"
 
 [Files]
-Source: "{#ExeSource}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ExeSource}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "claudius.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README.txt"; DestDir: "{app}"; Flags: ignoreversion isreadme
 Source: "FREEWARE.txt"; DestDir: "{app}"; Flags: ignoreversion
