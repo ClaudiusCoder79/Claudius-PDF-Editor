@@ -5,9 +5,9 @@
 #define MyAppVersion "3.7"
 #define MyAppExe "Claudius PDF Editor.exe"
 ; the program folder is taken from dist\Claudius PDF Editor (made by build_exe.bat), or from a folder "Claudius PDF Editor" placed next to this script
-#if DirExists("dist\Claudius PDF Editor")
+#if FileExists("dist\Claudius PDF Editor\Claudius PDF Editor.exe")
   #define ExeSource "dist\Claudius PDF Editor"
-#elif DirExists("Claudius PDF Editor")
+#elif FileExists("Claudius PDF Editor\Claudius PDF Editor.exe")
   #define ExeSource "Claudius PDF Editor"
 #else
   #error The program folder was not found. Run build_exe.bat first (it makes dist\Claudius PDF Editor) and compile again.
