@@ -47,7 +47,7 @@ except ImportError:
     sys.exit("claudius_extra.py is missing - keep it in the same folder as claudius.py")
 
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "3.7"
+APP_VERSION = "3.8"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF-Editor"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -677,7 +677,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
 
     # ------------------------------------------------------------ splash screen
     def _show_splash(self):
-        """small start-up window (the EXE shows its own splash while it unpacks; this one covers building the window)"""
+        """small start-up window (centred on the screen and scaled for high-DPI; the EXE build has no splash of its own any more)"""
         try:
             import pyi_splash                     # inside the EXE the build's own splash is already on screen - do not show a second one
             return

@@ -2,7 +2,7 @@
 ; Needs the folder dist\Claudius PDF Editor (run build_exe.bat first) and claudius.ico / README.txt next to this file.
 
 #define MyAppName "Claudius PDF Editor"
-#define MyAppVersion "3.7"
+#define MyAppVersion "3.8"
 #define MyAppExe "Claudius PDF Editor.exe"
 ; the program folder is taken from dist\Claudius PDF Editor (made by build_exe.bat), or from a folder "Claudius PDF Editor" placed next to this script
 #if FileExists("dist\Claudius PDF Editor\Claudius PDF Editor.exe")
