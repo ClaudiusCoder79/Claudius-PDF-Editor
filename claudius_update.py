@@ -3,7 +3,7 @@
 
 * Off by default. Settings > Updates: "Look for a new version when the program starts" (at most once a day), or
   File > Check for updates... at any time.
-* One request to  api.github.com/repos/ClaudiusCoder79/Claudius-PDF/releases/latest  - nothing about you or your files is sent.
+* One request to  api.github.com/repos/ClaudiusCoder79/Claudius-PDF-Editor/releases/latest  - nothing about you or your files is sent.
 * A new version is only downloaded when you press "Download and install". The installer is taken from the same GitHub
   release, checked against SHA256SUMS.txt of that release (a wrong checksum deletes the file), and started only after
   you confirm. Claudius closes first (it asks to save open work).
@@ -30,7 +30,7 @@ import claudius_theme as TH
 from claudius_i18n import tr as _tr
 from claudius_extra import APP, UI_FONT, BG
 
-REPO = "ClaudiusCoder79/Claudius-PDF"
+REPO = "ClaudiusCoder79/Claudius-PDF-Editor"
 API_URL = "https://api.github.com/repos/%s/releases/latest" % REPO
 RELEASE_PAGE = "https://github.com/%s/releases" % REPO
 ALLOWED_HOSTS = ("api.github.com", "github.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com")

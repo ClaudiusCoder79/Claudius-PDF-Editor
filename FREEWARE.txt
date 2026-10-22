@@ -4,7 +4,7 @@ Claudius PDF Editor - freeware notice
 Claudius PDF Editor is free for personal and commercial use. You may install it on as many
 computers as you like, use it at home or at work, and give it to other people - without paying.
 
-Source code: https://github.com/ClaudiusCoder79/Claudius-PDF
+Source code: https://github.com/ClaudiusCoder79/Claudius-PDF-Editor
 Licence: GNU Affero General Public License v3 - see the file LICENSE.
 
 Created by Michal Czapla & Claude AI.

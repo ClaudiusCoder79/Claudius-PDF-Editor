@@ -46,7 +46,7 @@ except ImportError:
 
 APP_NAME = "Claudius PDF Editor"
 APP_VERSION = "3.6"
-APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF"
+APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF-Editor"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
 WIN_ARIAL = r"C:\Windows\Fonts\arial.ttf"

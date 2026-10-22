@@ -1,5 +1,5 @@
 Claudius PDF Editor  -  PDF editor for Windows 10 / 11 x64 (also runs on macOS / Linux)
-Free for personal and commercial use, source on GitHub: https://github.com/ClaudiusCoder79/Claudius-PDF  (see FREEWARE.txt)
+Free for personal and commercial use, source on GitHub: https://github.com/ClaudiusCoder79/Claudius-PDF-Editor  (see FREEWARE.txt)
 Created by Michal Czapla & Claude AI
 
 RUN
@@ -203,7 +203,7 @@ SAFETY COPY            Autosave can be switched off or set to 1-30 minutes (Sett
 LICENCE
 -------
 Claudius PDF Editor is free for personal and commercial use and open source: GNU Affero General Public License v3
-(file LICENSE), because it is built on PyMuPDF / MuPDF (AGPL). Source: https://github.com/ClaudiusCoder79/Claudius-PDF
+(file LICENSE), because it is built on PyMuPDF / MuPDF (AGPL). Source: https://github.com/ClaudiusCoder79/Claudius-PDF-Editor
 
 NEW IN 2.1
 ----------

@@ -63,7 +63,7 @@ SECURITY CHECK OF 3.5
 - Static scan with bandit over all 14 program modules: no high and no medium findings (121 low: silent error handling in optional
   features, and the helper programs that are started on purpose). pyflakes: no undefined names.
 - NEW update check (claudius_update.py). Design: off by default; the only automatic request is one GET of
-  https://api.github.com/repos/ClaudiusCoder79/Claudius-PDF/releases/latest, at most once a day, with no user data. Safeguards:
+  https://api.github.com/repos/ClaudiusCoder79/Claudius-PDF-Editor/releases/latest, at most once a day, with no user data. Safeguards:
   https only; only the hosts github.com, api.github.com, objects.githubusercontent.com, release-assets.githubusercontent.com (redirects
   to other hosts are refused); download links must belong to this repository; the installer name must match
   Claudius-PDF-Editor-Setup-<version>.exe (no path characters); answer size, checksum-file size and installer size are limited and the
