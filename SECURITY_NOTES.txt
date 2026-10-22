@@ -1,4 +1,4 @@
-Claudius PDF Editor 3.5 - security notes and roadmap
+Claudius PDF Editor 3.6 - security notes and roadmap
 =========================================
 
 WHAT Claudius PDF Editor DOES NOT DO (by design)

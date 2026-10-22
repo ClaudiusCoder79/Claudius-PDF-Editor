@@ -7,8 +7,8 @@ RUN
 2. Double-click run.bat  (installs the needed packages on first run).
    Keep all files of the folder together (claudius.py and the claudius_*.py modules, requirements.txt, claudius.ico, splash.png).
 
-INSTALLER (Claudius-PDF-Editor-Setup-3.5.exe)
-  Double-click build_installer.bat (needs Inno Setup, free: jrsoftware.org/isdl.php) -> installer\Claudius-PDF-Editor-Setup-3.5.exe
+INSTALLER (Claudius-PDF-Editor-Setup-3.6.exe)
+  Double-click build_installer.bat (needs Inno Setup, free: jrsoftware.org/isdl.php) -> installer\Claudius-PDF-Editor-Setup-3.6.exe
   or let GitHub build it: the workflow in claudius_github_repo.zip makes both the .exe and the installer.
   The installer asks for administrator rights and installs into C:\Program Files\Claudius PDF Editor.
   It adds a Start menu folder (program + Uninstall), an optional desktop icon, an optional "Open with" entry for PDFs,
@@ -108,9 +108,12 @@ PRINTING
 File > Print (Ctrl+P) or the printer button in the quick toolbar: choose the printer, number of copies,
 pages and scale. On Windows the pages are sent straight to the printer - no other PDF program is needed.
 
-NEW IN 3.5
+NEW IN 3.6
+----------
   - FIX: photos added to a page stay visible after saving in continuous view
     (the file was always correct; the screen kept an old picture of that page).
+
+NEW IN 3.5
 ----------
 UPDATES FROM GITHUB    Settings > Updates: "Look on GitHub for a new version when the program starts (once a day)" - switched OFF
                        until you tick it. Or use File > Check for updates... (also in About) at any time. When a newer release
@@ -238,7 +241,7 @@ NOT TESTED ON REAL HARDWARE
   they were tested here with stand-ins. PDF/A was tested with a stand-in for Ghostscript. If one of them does not
   work on your PC, tell me what the message says.
 
-VERSION 3.5  (3.4 added Windows pointers and quick delete; 3.3 added text frames, move text and the quick toolbar; 3.2 added the new text window, picture alignment and password fixes; 3.0 added the Settings window, tools and review features; 2.1 added tabs, selection, recovery ...; 2.0 brought the iOS look, dark mode, six languages, printing)
+VERSION 3.6  (3.5 added the optional update check, 3.4 added Windows pointers and quick delete; 3.3 added text frames, move text and the quick toolbar; 3.2 added the new text window, picture alignment and password fixes; 3.0 added the Settings window, tools and review features; 2.1 added tabs, selection, recovery ...; 2.0 brought the iOS look, dark mode, six languages, printing)
 -----------
 All the above, plus the changes listed in 2.0: new look (iOS style, light and dark), 3-D icon buttons,
 quick toolbar, six languages, "Make Claudius PDF Editor the default PDF app", print dialog.
