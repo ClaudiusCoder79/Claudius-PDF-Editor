@@ -28,17 +28,23 @@ jobs:
           foreach ($f in "splash.png","FREEWARE.txt","LICENSE","claudius.ico","installer.iss","version_info.txt","claudius.py","claudius_extra.py","claudius_i18n.py","claudius_theme.py","claudius_lang.py","claudius_print.py","claudius_features.py","claudius_view.py","claudius_pro.py","claudius_v3.py","claudius_v3b.py","claudius_text.py","claudius_frame.py","claudius_quick.py","claudius_update.py") { if (-not (Test-Path $f)) { throw "Missing file: $f" } }
           python -m py_compile claudius.py claudius_extra.py claudius_i18n.py claudius_theme.py claudius_lang.py claudius_print.py claudius_features.py claudius_view.py claudius_pro.py claudius_v3.py claudius_v3b.py claudius_text.py claudius_frame.py claudius_quick.py claudius_update.py
       - name: Build EXE
-        run: python -m PyInstaller --noconsole --onefile --name "Claudius PDF Editor" --icon claudius.ico --splash splash.png --version-file version_info.txt --exclude-module pymupdf.layout --exclude-module pymupdf_layout --exclude-module pymupdf4llm --exclude-module onnxruntime --collect-data docx --collect-data pptx --collect-submodules docx --collect-submodules pptx --collect-submodules openpyxl --collect-all tkinterdnd2 --hidden-import claudius_extra --hidden-import claudius_i18n --hidden-import claudius_theme --hidden-import claudius_lang --hidden-import claudius_print --hidden-import claudius_features --hidden-import claudius_view --hidden-import claudius_pro --hidden-import claudius_v3 --hidden-import claudius_v3b --hidden-import claudius_text --hidden-import claudius_frame --hidden-import claudius_quick --hidden-import claudius_update claudius.py
-      - name: Checksums
+        run: python -m PyInstaller --noconsole --onedir --name "Claudius PDF Editor" --icon claudius.ico --splash splash.png --version-file version_info.txt --exclude-module pymupdf.layout --exclude-module pymupdf_layout --exclude-module pymupdf4llm --exclude-module onnxruntime --collect-data docx --collect-data pptx --collect-submodules docx --collect-submodules pptx --collect-submodules openpyxl --collect-all tkinterdnd2 --hidden-import claudius_extra --hidden-import claudius_i18n --hidden-import claudius_theme --hidden-import claudius_lang --hidden-import claudius_print --hidden-import claudius_features --hidden-import claudius_view --hidden-import claudius_pro --hidden-import claudius_v3 --hidden-import claudius_v3b --hidden-import claudius_text --hidden-import claudius_frame --hidden-import claudius_quick --hidden-import claudius_update claudius.py
+      - name: Check the built program
         run: |
-          Get-FileHash "dist\Claudius PDF Editor.exe" -Algorithm SHA256 | ForEach-Object { "$($_.Hash.ToLower())  Claudius PDF Editor.exe" } | Out-File dist\SHA256SUMS.txt -Encoding ascii
+          if (-not (Test-Path "dist\Claudius PDF Editor\Claudius PDF Editor.exe")) { throw "The program was not built" }
+          Get-ChildItem "dist\Claudius PDF Editor" | Select-Object -First 10
+      - name: Portable zip (unzip anywhere and start the EXE - no installation)
+        run: |
+          $v = (Select-String -Path claudius.py -Pattern '^APP_VERSION = "(.+)"').Matches[0].Groups[1].Value
+          Compress-Archive -Path "dist\Claudius PDF Editor" -DestinationPath "dist\Claudius-PDF-Editor-portable-$v.zip"
+          Get-ChildItem dist\*.zip | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Out-File dist\SHA256SUMS.txt -Encoding ascii
           Get-Content dist\SHA256SUMS.txt
-      - name: Upload EXE
+      - name: Upload portable zip
         uses: actions/upload-artifact@v7
         with:
           name: Claudius-PDF-Editor-windows-x64
           path: |
-            dist/Claudius PDF Editor.exe
+            dist/*.zip
             dist/SHA256SUMS.txt
       - name: Install Inno Setup
         run: choco install innosetup -y --no-progress
@@ -58,7 +64,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/Claudius PDF Editor.exe
+            dist/*.zip
             dist/SHA256SUMS.txt
             installer/*.exe
           generate_release_notes: true
