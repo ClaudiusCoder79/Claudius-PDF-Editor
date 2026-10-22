@@ -109,6 +109,8 @@ File > Print (Ctrl+P) or the printer button in the quick toolbar: choose the pri
 pages and scale. On Windows the pages are sent straight to the printer - no other PDF program is needed.
 
 NEW IN 3.5
+  - FIX: photos added to a page stay visible after saving in continuous view
+    (the file was always correct; the screen kept an old picture of that page).
 ----------
 UPDATES FROM GITHUB    Settings > Updates: "Look on GitHub for a new version when the program starts (once a day)" - switched OFF
                        until you tick it. Or use File > Check for updates... (also in About) at any time. When a newer release

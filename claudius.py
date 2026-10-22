@@ -2212,7 +2212,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
                 errors.append(f"{o.name}: {ex}")
         self.floats, self.sel = [], None
         self.canvas.delete("fl")
-        if pno == self.page_no:
+        if pno == self.page_no or self.cont:        # continuous view: the page may be off screen, its picture must be redrawn too
             self.render()
         self.refresh_thumb(pno)
         self.update_ui()
