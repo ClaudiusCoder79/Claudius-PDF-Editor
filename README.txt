@@ -7,8 +7,8 @@ RUN
 2. Double-click run.bat  (installs the needed packages on first run).
    Keep all files of the folder together (claudius.py and the claudius_*.py modules, requirements.txt, claudius.ico, splash.png).
 
-INSTALLER (Claudius-PDF-Editor-Setup-3.4.exe)
-  Double-click build_installer.bat (needs Inno Setup, free: jrsoftware.org/isdl.php) -> installer\Claudius-PDF-Editor-Setup-3.4.exe
+INSTALLER (Claudius-PDF-Editor-Setup-3.5.exe)
+  Double-click build_installer.bat (needs Inno Setup, free: jrsoftware.org/isdl.php) -> installer\Claudius-PDF-Editor-Setup-3.5.exe
   or let GitHub build it: the workflow in claudius_github_repo.zip makes both the .exe and the installer.
   The installer asks for administrator rights and installs into C:\Program Files\Claudius PDF Editor.
   It adds a Start menu folder (program + Uninstall), an optional desktop icon, an optional "Open with" entry for PDFs,
@@ -107,6 +107,17 @@ PRINTING
 --------
 File > Print (Ctrl+P) or the printer button in the quick toolbar: choose the printer, number of copies,
 pages and scale. On Windows the pages are sent straight to the printer - no other PDF program is needed.
+
+NEW IN 3.5
+----------
+UPDATES FROM GITHUB    Settings > Updates: "Look on GitHub for a new version when the program starts (once a day)" - switched OFF
+                       until you tick it. Or use File > Check for updates... (also in About) at any time. When a newer release
+                       exists you see its notes and can: Download and install / Open release page / Skip this version / Later.
+                       "Download and install" takes the installer from the same GitHub release, checks it against that release's
+                       SHA256SUMS.txt (a wrong checksum deletes the file), asks you again, then closes Claudius (it asks to save
+                       open work) and starts the installer. Nothing is downloaded or started without your click. Only one request
+                       to api.github.com is made for the check; nothing about you or your files is sent.
+SECURITY               PowerShell helpers (Office conversion, scanner, voices) are started by their full Windows path.
 
 NEW IN 3.4
 ----------
@@ -225,7 +236,7 @@ NOT TESTED ON REAL HARDWARE
   they were tested here with stand-ins. PDF/A was tested with a stand-in for Ghostscript. If one of them does not
   work on your PC, tell me what the message says.
 
-VERSION 3.4  (3.3 added text frames, move text and the quick toolbar; 3.2 added the new text window, picture alignment and password fixes; 3.0 added the Settings window, tools and review features; 2.1 added tabs, selection, recovery ...; 2.0 brought the iOS look, dark mode, six languages, printing)
+VERSION 3.5  (3.4 added Windows pointers and quick delete; 3.3 added text frames, move text and the quick toolbar; 3.2 added the new text window, picture alignment and password fixes; 3.0 added the Settings window, tools and review features; 2.1 added tabs, selection, recovery ...; 2.0 brought the iOS look, dark mode, six languages, printing)
 -----------
 All the above, plus the changes listed in 2.0: new look (iOS style, light and dark), 3-D icon buttons,
 quick toolbar, six languages, "Make Claudius PDF Editor the default PDF app", print dialog.

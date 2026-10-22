@@ -86,6 +86,13 @@ LANCZOS, BICUBIC = RES.LANCZOS, RES.BICUBIC
 CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".claudius")
 NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0        # hide console windows of helper programs
 
+
+def powershell_exe():
+    """full path of Windows PowerShell (so a program with that name in the current folder / PATH is never started)"""
+    root = os.environ.get("SystemRoot") or os.environ.get("windir") or r"C:\Windows"
+    p = os.path.join(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+    return p if os.path.isfile(p) else "powershell"
+
 ALL_PERMS = 0
 for _n in ("PRINT", "COPY", "MODIFY", "ANNOTATE", "FORM", "ACCESSIBILITY", "ASSEMBLE", "PRINT_HQ"):
     ALL_PERMS |= getattr(fitz, "PDF_PERM_" + _n, 0)
@@ -805,7 +812,7 @@ def office_to_pdf(path, outdir):
         if key in _PS_OFFICE:
             # the file names travel in environment variables - they are never pasted into the script (no quoting tricks possible)
             env = dict(os.environ, CLAUDIUS_SRC=os.path.abspath(path), CLAUDIUS_DST=os.path.abspath(dst))
-            subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", _PS_OFFICE[key]], capture_output=True,
+            subprocess.run([powershell_exe(), "-NoProfile", "-NonInteractive", "-Command", _PS_OFFICE[key]], capture_output=True,
                            timeout=240, creationflags=NO_WINDOW, env=env)
             if os.path.exists(dst):
                 return dst

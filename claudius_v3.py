@@ -41,6 +41,7 @@ V3_DEFAULTS = {
     "hl_names": ["Important", "Agree", "Question", "Reference"],
     "hl_colors": None,
     "presets": {}, "positions": {},
+    "check_updates": False, "update_last": "", "update_skip": "",
 }
 MAX_POSITIONS = 300
 
@@ -404,7 +405,7 @@ class V3Tools:
         import claudius_i18n as i18n
         c = self.cfg
         d = self._dlg("Settings")
-        v = {k: tk.BooleanVar(value=bool(c[k])) for k in ("remember_window", "remember_view", "remember_position", "autosave")}
+        v = {k: tk.BooleanVar(value=bool(c[k])) for k in ("remember_window", "remember_view", "remember_position", "autosave", "check_updates")}
         r = 0
         self._label(d, "Language", bold=True).grid(row=r, column=0, sticky="w", pady=(0, 3))
         lang = tk.StringVar(value=dict(i18n.LANGS).get(i18n.current, i18n.current))
@@ -455,6 +456,14 @@ class V3Tools:
         r += 1
         self._label(d, "Highlight colours", bold=True).grid(row=r, column=0, sticky="w", pady=(10, 3))
         ttk.Button(d, text="Change names and colours...", command=self.dlg_highlight_colors).grid(row=r, column=1, sticky="w", pady=(10, 3))
+        r += 1
+        self._label(d, "Updates", bold=True).grid(row=r, column=0, sticky="w", pady=(10, 3))
+        tk.Checkbutton(d, text="Look on GitHub for a new version when the program starts (once a day)", variable=v["check_updates"],
+                       bg=BG, activebackground=BG, fg=TH.LABEL, selectcolor=TH.CARD, font=(UI_FONT, 9)
+                       ).grid(row=r, column=1, columnspan=2, sticky="w", pady=(10, 0))
+        r += 1
+        ttk.Button(d, text="Check for updates now...", command=lambda: (d.destroy(), self.upd_check(True))).grid(
+            row=r, column=1, sticky="w", pady=(2, 3))
         r += 1
 
         def go():

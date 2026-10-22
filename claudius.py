@@ -45,7 +45,7 @@ except ImportError:
     sys.exit("claudius_extra.py is missing - keep it in the same folder as claudius.py")
 
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "3.4"
+APP_VERSION = "3.5"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -59,6 +59,7 @@ from claudius_v3 import V3Tools
 from claudius_text import TextTools
 from claudius_frame import FrameTools
 from claudius_quick import QuickTools
+from claudius_update import UpdateTools
 from claudius_v3b import V3bTools
 from claudius_pro import ProTools
 ACCENT = TH.ACCENT
@@ -558,7 +559,7 @@ class Snap(tuple):
         return s
 
 
-class PdfEditor(TextTools, FrameTools, QuickTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools, tk.Tk):
+class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools, tk.Tk):
     def __init__(self, path=None):
         super().__init__()
         self._splash = None
@@ -628,6 +629,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, V3Tools, V3bTools, ViewTools,
         self.set_tool("view")
         self._v3_after_ui()
         self.after(400, self.qt_restore)
+        self.after(8000, self.upd_schedule)
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
         self._win11_init()
@@ -731,6 +733,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, V3Tools, V3bTools, ViewTools,
         self.file_menu.add_separator()
         self.file_menu.add_command(label="Settings...", accelerator="Ctrl+,", command=self.dlg_settings)
         self.file_menu.add_command(label="Undo history...", command=self.dlg_undo_history)
+        self.file_menu.add_command(label="Check for updates...", command=lambda: self.upd_check(True))
         self.file_menu.add_separator()
         self.file_menu.add_command(label="Export current page as PNG...", command=self.export_png)
         self.file_menu.add_command(label="Extract pages...", command=self.dlg_extract)
@@ -1910,7 +1913,8 @@ class PdfEditor(TextTools, FrameTools, QuickTools, V3Tools, V3bTools, ViewTools,
         link.bind("<Button-1>", lambda e: webbrowser.open(APP_URL))
         tk.Label(dlg, text=f"Powered by PyMuPDF {fitz.VersionBind}",
                  font=(UI_FONT, 9), bg=TH.CARD, fg=TH.TERTIARY).pack(pady=(14, 0))
-        ttk.Button(dlg, text="Close", command=dlg.destroy).pack(pady=(18, 0))
+        ttk.Button(dlg, text="Check for updates...", command=lambda: (dlg.destroy(), self.upd_check(True))).pack(pady=(14, 0))
+        ttk.Button(dlg, text="Close", command=dlg.destroy).pack(pady=(8, 0))
 
     # ================================================================ shapes
     def pick_fill_color(self):

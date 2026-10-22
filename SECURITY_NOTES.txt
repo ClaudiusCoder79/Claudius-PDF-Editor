@@ -1,4 +1,4 @@
-Claudius PDF Editor 3.4 - security notes and roadmap
+Claudius PDF Editor 3.5 - security notes and roadmap
 =========================================
 
 WHAT Claudius PDF Editor DOES NOT DO (by design)
@@ -58,6 +58,26 @@ SECURITY CHECK OF 3.0
 - Export of highlights removes control characters that Word files cannot hold.
 - Clean data / Redaction check help to find hidden data, but cannot prove a document is free of it - check important
   files by opening the saved copy in another viewer.
+
+SECURITY CHECK OF 3.5
+- Static scan with bandit over all 14 program modules: no high and no medium findings (121 low: silent error handling in optional
+  features, and the helper programs that are started on purpose). pyflakes: no undefined names.
+- NEW update check (claudius_update.py). Design: off by default; the only automatic request is one GET of
+  https://api.github.com/repos/ClaudiusCoder79/Claudius-PDF/releases/latest, at most once a day, with no user data. Safeguards:
+  https only; only the hosts github.com, api.github.com, objects.githubusercontent.com, release-assets.githubusercontent.com (redirects
+  to other hosts are refused); download links must belong to this repository; the installer name must match
+  Claudius-PDF-Editor-Setup-<version>.exe (no path characters); answer size, checksum-file size and installer size are limited and the
+  installer must have exactly the announced size; the SHA-256 must match the line in the release's SHA256SUMS.txt - without that
+  line the download is refused; a wrong or incomplete file is deleted. The installer is started only after the user clicked
+  "Download and install" and confirmed a second time, after Claudius closed (it asks to save open work). Unit tests cover tampered,
+  oversized, truncated and unchecked downloads, foreign hosts, http and bad names.
+  Limits to know: the checksum comes from the same release, so it protects against damaged or swapped download files but NOT against
+  someone who takes over the GitHub account / repository (they could publish a bad installer and a matching checksum) - protect the
+  account with two-factor sign-in. The installer is not code-signed, so Windows SmartScreen may show a warning.
+- Hardening: Windows PowerShell is started by its full path (SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe) instead of
+  looking the name up in the current folder / PATH.
+- Open point (older feature, unchanged): "Digital signatures" can download the pyHanko component with pip from PyPI after the user agrees;
+  the version is not pinned and no hash is checked. It only runs on request. Possible later improvement: pin a version with --require-hashes.
 
 SECURITY CHECK OF 3.4 (same findings as 3.3: no high, no medium; the new code only removes or moves text in the open document)
 

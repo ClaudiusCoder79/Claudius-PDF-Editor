@@ -28,6 +28,7 @@ from PIL import Image
 import claudius_theme as TH
 from claudius_i18n import tr as _tr
 from claudius_extra import APP, UI_FONT, BG, S, parse_pages, pages_to_text
+import claudius_extra as EX
 
 AUTOSAVE_SECONDS = 60
 RECOVERY_KEEP_DAYS = 14
@@ -349,7 +350,7 @@ def scan_one(out_png):
     if os.path.exists(out_png):
         os.remove(out_png)
     env = dict(os.environ, CLAUDIUS_OUT=out_png)
-    r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", WIA_SCRIPT],
+    r = subprocess.run([EX.powershell_exe(), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", WIA_SCRIPT],
                        capture_output=True, text=True, env=env, timeout=900, creationflags=NO_WINDOW)
     if r.returncode == 3:
         return False
@@ -388,7 +389,7 @@ def speak_command(text_file, rate=0, voice=None):
         ps = ("Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
               "$s.Rate = [int]$env:CLAUDIUS_RATE; if ($env:CLAUDIUS_VOICE) { try { $s.SelectVoice($env:CLAUDIUS_VOICE) } catch {} }; "
               "$t = Get-Content -Raw -Encoding UTF8 -LiteralPath $env:CLAUDIUS_TXT; $s.Speak($t)")
-        return ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", ps], env
+        return [EX.powershell_exe(), "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", ps], env
     if sys.platform == "darwin" and shutil.which("say"):
         return ["say", "-r", str(175 + 15 * int(rate)), "-f", text_file], env
     for exe in ("espeak-ng", "espeak"):
@@ -404,7 +405,7 @@ def list_voices():
     try:
         ps = ("Add-Type -AssemblyName System.Speech; (New-Object System.Speech.Synthesis.SpeechSynthesizer)"
               ".GetInstalledVoices() | ForEach-Object { $_.VoiceInfo.Name }")
-        r = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", ps], capture_output=True, text=True,
+        r = subprocess.run([EX.powershell_exe(), "-NoProfile", "-NonInteractive", "-Command", ps], capture_output=True, text=True,
                            timeout=20, creationflags=NO_WINDOW)
         return [v.strip() for v in r.stdout.splitlines() if v.strip()]
     except Exception:
