@@ -95,7 +95,7 @@ def resolve_font(spec, text, original=None):
     if key == ORIGINAL and original:
         import claudius_v3
         doc, pg, span = original
-        return claudius_v3.match_font(doc, pg, span, text)
+        return claudius_v3.match_font(doc, pg, span, text, bold, ital)
     kind, _, data = key.partition(":")
     if kind == "file":
         files = _files_of(data)
@@ -556,7 +556,7 @@ class TextTools:
             tf.configure(family=fam, size=max(9, min(20, int(round(s["size"])))), weight="bold" if s["bold"] else "normal",
                          slant="italic" if s["italic"] else "roman", underline=s["underline"], overstrike=s["strike"])
             for k in ("B", "I"):
-                btns[k].config(state="disabled" if key == ORIGINAL else "normal")
+                btns[k].config(state="normal")
             sp_lbl.config(text="%.1f" % s["spacing"])
             zf = max(1.0, min(4.0, float(v_zoom.get())))
             zl.config(text="%d%%" % round(zf * 100))

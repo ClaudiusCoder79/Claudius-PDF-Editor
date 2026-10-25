@@ -201,14 +201,24 @@ def _covers(font, text):
         return False
 
 
-def match_font(doc, pg, span, text):
+def match_font(doc, pg, span, text, bold=None, ital=None):
     """Font settings for insert_text that look like the original text: the font embedded in the PDF when it has every
     letter that is needed, else an installed font of the same family, else the nearest standard PDF font."""
     name = span.get("font", "") or ""
     flags = span.get("flags", 0)
     plain = re.sub(r"^[A-Z]{6}\+", "", name)
+    k0 = re.sub(r"[^a-z]", "", plain.lower())
+    was_b = bool(flags & 16) or "bold" in k0 or "black" in k0
+    was_i = bool(flags & 2) or "italic" in k0 or "oblique" in k0
+    restyle = (bold is not None and bool(bold) != was_b) or (ital is not None and bool(ital) != was_i)
+    if restyle:                      # bold / italic changed: the embedded font only has the old style, so take the same family in the new style
+        want_b = was_b if bold is None else bool(bold)
+        want_i = was_i if ital is None else bool(ital)
+        plain = re.sub(r"(?i)bold|black|heavy|italic|oblique", "", plain)
+        name = plain
+        flags = (flags & ~18) | (16 if want_b else 0) | (2 if want_i else 0)
     try:
-        for f in pg.get_fonts(full=True):
+        for f in ([] if restyle else pg.get_fonts(full=True)):
             if _norm(f[3]) == _norm(plain) or _norm(f[3]).startswith(_norm(plain)) or _norm(plain).startswith(_norm(f[3])):
                 if f[1] in ("ttf", "otf", "cff", "pfa", "pfb"):
                     buf = doc.extract_font(f[0])[3]
