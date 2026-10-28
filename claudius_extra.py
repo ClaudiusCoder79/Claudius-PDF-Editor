@@ -3551,6 +3551,13 @@ class ExtraTools(ExtraMarkup, ExtraConvert, Win11Tools):
         upd, close = self._progress("Printing...", len(pages) * copies)
         try:
             cp.print_document(self.doc, pages, printer, title, copies, fit, progress=upd)
+            try:                                                    # remember the printer and the number of copies for next time
+                if hasattr(self, "cfg") and (self.cfg.get("printer") != printer or self.cfg.get("copies") != copies):
+                    self.cfg["printer"], self.cfg["copies"] = printer, copies
+                    from claudius_v3 import save_cfg
+                    save_cfg(self.cfg)
+            except Exception:
+                pass
         except Exception as ex:
             close()
             messagebox.showerror(APP, f"Could not print:\n{ex}")

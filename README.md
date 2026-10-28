@@ -7,17 +7,17 @@ See `README.txt` for the full feature list and `SECURITY_NOTES.txt` for privacy 
 ## Download the installer (built by GitHub)
 
 1. Open the **Actions** tab -> latest green run of "Build Claudius PDF Editor for Windows" -> **Artifacts**
-   -> download `Claudius-PDF-Editor-installer` (Claudius-PDF-Editor-Setup-3.9.exe) or `Claudius-PDF-Editor-windows-x64` (portable zip: unzip, start Claudius PDF Editor.exe).
-2. Or, for a public download page: create a tag `v3.9` (see below); the installer then appears under **Releases**.
+   -> download `Claudius-PDF-Editor-installer` (Claudius-PDF-Editor-Setup-4.0.exe) or `Claudius-PDF-Editor-windows-x64` (portable zip: unzip, start Claudius PDF Editor.exe).
+2. Or, for a public download page: create a tag `v4.0` (see below); the installer then appears under **Releases**.
 
 ## How to build from scratch on GitHub
 
 1. Create a new repository on github.com (e.g. `claudius`).
 2. Upload **all** files of this folder, keeping the structure (including the hidden folder `.github/workflows/`).
-   Easiest: `git clone`, copy the files in, then `git add . && git commit -m "Claudius PDF Editor 3.9" && git push`.
+   Easiest: `git clone`, copy the files in, then `git add . && git commit -m "Claudius PDF Editor 4.0" && git push`.
 3. Push to `main` -> the build starts automatically (Actions tab, about 5 minutes). Also use *Run workflow* to start it by hand.
-4. Release: `git tag v3.9 && git push origin v3.9` -> the workflow also creates a GitHub Release with
-   `Claudius-PDF-Editor-Setup-3.9.exe`, `Claudius-PDF-Editor-portable-3.9.zip` and `SHA256SUMS.txt`.
+4. Release: `git tag v4.0 && git push origin v4.0` -> the workflow also creates a GitHub Release with
+   `Claudius-PDF-Editor-Setup-4.0.exe`, `Claudius-PDF-Editor-portable-4.0.zip` and `SHA256SUMS.txt`.
 
 ## Build on your own PC
 

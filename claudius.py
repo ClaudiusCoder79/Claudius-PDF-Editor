@@ -47,7 +47,7 @@ except ImportError:
     sys.exit("claudius_extra.py is missing - keep it in the same folder as claudius.py")
 
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "3.9"
+APP_VERSION = "4.0"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF-Editor"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25

@@ -103,11 +103,16 @@ class WinGdiPrinter:
 
     def draw_page(self, image, box):
         from PIL import ImageWin
-        self.gdi.StartPage(self.hdc)
+        if self.gdi.StartPage(self.hdc) <= 0:
+            raise OSError("The printer did not accept a new page (is it offline or out of paper?)")
         self._in_page = True
-        ImageWin.Dib(image).draw(int(self.hdc), box)
-        self.gdi.EndPage(self.hdc)
-        self._in_page = False
+        try:
+            ImageWin.Dib(image).draw(int(self.hdc), box)
+        finally:
+            ok = self.gdi.EndPage(self.hdc)
+            self._in_page = False
+        if ok <= 0:
+            raise OSError("The printer stopped while printing a page")
 
     def close(self, ok=True):
         if not self.hdc:
@@ -140,6 +145,8 @@ def render_for_printer(page, area, dpis, fit="fit", max_dpi=300):
     r = page.rect
     rotate, scale, box = layout(r.width, r.height, area[0], area[1], fit, dpis[0], dpis[1])
     zoom = min(scale, max_dpi / 72.0)                         # no need for more than 300 dpi of detail
+    if r.width * r.height * zoom * zoom > 70e6:               # very large sheets (posters, plans): keep the picture below ~70 megapixels
+        zoom = (70e6 / (r.width * r.height)) ** 0.5
     pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False, annots=True)
     img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
     if rotate:
@@ -151,9 +158,15 @@ def print_pages_gdi(doc, pages, backend, copies=1, fit="fit", progress=None):
     """draw the pages with a backend that has page_area() / dpi / draw_page(image, box)"""
     total = len(pages) * copies
     done = 0
+    cache = {}                                                # with several copies every page is rendered once and reused
     for _c in range(copies):
         for pno in pages:
-            img, box = render_for_printer(doc[pno], backend.page_area(), backend.dpi, fit)
+            if pno in cache:
+                img, box = cache[pno]
+            else:
+                img, box = render_for_printer(doc[pno], backend.page_area(), backend.dpi, fit)
+                if copies > 1 and len(cache) < 12:            # keep at most 12 rendered pages in memory
+                    cache[pno] = (img, box)
             backend.draw_page(img, box)
             done += 1
             if progress:
@@ -165,26 +178,23 @@ def print_document(doc, pages, printer, title, copies=1, fit="fit", progress=Non
     """send the pages to the printer.  Returns a short description of the method used."""
     copies = max(1, int(copies))
     if sys.platform == "win32":
-        backend = None
         try:
             backend = WinGdiPrinter(printer, title)
-            ok = False
-            try:
-                print_pages_gdi(doc, pages, backend, copies, fit, progress)
-                ok = True
-            finally:
-                backend.close(ok)
-            return "gdi"
         except Exception as ex:
-            if backend is not None and backend.hdc is None and not isinstance(ex, OSError):
-                raise
-            # fall back: let Windows hand the file to whichever program handles 'print' for PDFs
+            # the printer could not be opened: let Windows hand the file to whichever program handles 'print' for PDFs
             tmp = _pages_to_temp_pdf(doc, pages)
             try:
                 os.startfile(tmp, "print")
             except Exception as ex2:
                 raise RuntimeError(f"{ex}\n{ex2}")
             return "startfile"
+        ok = False
+        try:
+            print_pages_gdi(doc, pages, backend, copies, fit, progress)      # an error in the middle is reported, never printed a second time
+            ok = True
+        finally:
+            backend.close(ok)
+        return "gdi"
     tmp = _pages_to_temp_pdf(doc, pages)
     lp = shutil.which("lp")
     if not lp:
