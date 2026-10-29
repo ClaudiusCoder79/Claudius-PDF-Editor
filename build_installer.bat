@@ -17,5 +17,5 @@ if "%ISCC%"=="" (
 )
 "%ISCC%" installer.iss
 echo.
-echo Done. Your installer is in the "installer" folder: Claudius-PDF-Editor-Setup-4.0.exe
+echo Done. Your installer is in the "installer" folder: Claudius-PDF-Editor-Setup-4.1.exe
 pause

@@ -47,7 +47,7 @@ except ImportError:
     sys.exit("claudius_extra.py is missing - keep it in the same folder as claudius.py")
 
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "4.0"
+APP_VERSION = "4.1"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF-Editor"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -1400,6 +1400,30 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         self._v3_restore_position(p)
         self.status.config(text=f"Opened {os.path.basename(p)}" + ("  (password kept when you save)" if prot else ""))
 
+    def single_listen(self, receiver):
+        """files sent by other copies of the program (Explorer starts one copy per file) open here as tabs"""
+        self._single = receiver
+
+        def poll():
+            try:
+                got = receiver.take()
+                if got:
+                    try:
+                        self.deiconify()
+                        self.lift()
+                        self.focus_force()
+                    except tk.TclError:
+                        pass
+                    for p in got:
+                        self.open_path(p)
+            except Exception:
+                pass
+            try:
+                self.after(250, poll)
+            except tk.TclError:
+                pass
+        self.after(250, poll)
+
     def unlock_document(self, doc, name, parent=None, tries=3):
         """Ask for the password until `doc` opens. Returns the password, or None when cancelled / not unlocked."""
         msg = "This PDF is password-protected.\nPassword:"
@@ -1556,6 +1580,11 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             self.save_geometry()
             self.stop_speaking()
             self.clear_recovery()
+            try:
+                if getattr(self, "_single", None):
+                    self._single.close()
+            except Exception:
+                pass
             self.destroy()
 
     def export_png(self):
@@ -2935,7 +2964,21 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
 
 def main():
     paths = [a for a in sys.argv[1:] if not a.startswith("-")]
-    PdfEditor(paths).mainloop()
+    receiver = None
+    if not os.environ.get("CLAUDIUS_NO_SINGLE"):
+        try:
+            from claudius_v3 import load_cfg
+            if load_cfg().get("single_instance", True):
+                import claudius_single
+                receiver, handed = claudius_single.start(paths)
+                if handed:                                  # the running window took the files as new tabs
+                    return
+        except Exception:
+            receiver = None
+    app = PdfEditor(paths)
+    if receiver is not None:
+        app.single_listen(receiver)
+    app.mainloop()
 
 
 if __name__ == "__main__":

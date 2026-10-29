@@ -1,4 +1,4 @@
-Claudius PDF Editor 4.0 - security notes and roadmap
+Claudius PDF Editor 4.1 - security notes and roadmap
 =========================================
 
 WHAT Claudius PDF Editor DOES NOT DO (by design)
@@ -102,3 +102,12 @@ STILL NOT IN Claudius PDF Editor (ideas)
 3. Word-by-word highlighting while reading aloud; choosing the scanner resolution / paper source inside Claudius PDF Editor.
 4. Selecting text across several pages in one drag; drag-to-reorder tabs.
 5. PDF/A without Ghostscript; PDF/UA export.
+
+
+OPEN FILES AS TABS (4.1)
+  claudius_single.py: the running window listens on 127.0.0.1 only (random port, never on the network). A message must
+  carry a 48-character random secret that is stored in the user's own profile folder (~/.claudius/instance.json);
+  only existing files are accepted (at most 50 per message, messages limited to 200 KB), and they are opened exactly
+  as if the user had chosen them in File > Open. A local program running as the same user could read the secret and
+  ask the window to open a PDF - which it could do anyway by starting the program with that file. Can be switched off
+  in Settings.
