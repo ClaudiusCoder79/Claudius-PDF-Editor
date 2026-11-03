@@ -46,10 +46,12 @@ try:
 except ImportError:
     sys.exit("claudius_extra.py is missing - keep it in the same folder as claudius.py")
 
+from claudius_cad import CadTools, CAD_TOOLS, CAD_HINTS
+
 ZOOM_MIN, ZOOM_MAX = 0.2, 32.0           # 20 % ... 3200 %
 TILE_PIXELS = 12_000_000                 # a page that would need a bigger bitmap than this is drawn in pieces (only what is visible)
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "4.2"
+APP_VERSION = "4.3"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF-Editor"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -644,7 +646,7 @@ class Snap(tuple):
         return s
 
 
-class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools, tk.Tk):
+class PdfEditor(CadTools, TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools, tk.Tk):
     def __init__(self, path=None):
         self._t_build = _time.time()
         super().__init__()
@@ -877,7 +879,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             file_pill.winfo_rootx(), file_pill.winfo_rooty() + file_pill.winfo_height()), S, bg=BAR_BG)
         file_pill.pack(side="left", padx=(0, 4), pady=S(6))
 
-        for name in ("Home", "Comment", "Shapes", "Edit", "Sign", "Photos", "Adjust", "Organize", "Document", "Convert", "Tools", "Review", "View"):
+        for name in ("Home", "Comment", "Shapes", "CAD", "Edit", "Sign", "Photos", "Adjust", "Organize", "Document", "Convert", "Tools", "Review", "View"):
             pill = PillTab(top, name, lambda n=name: self.show_tab(n), S, bg=BAR_BG)
             pill.pack(side="left", padx=1, pady=S(6))
             self.tab_labels[name] = pill
@@ -940,7 +942,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         holder.pack_propagate(False)
         tk.Frame(self, bg=RIBBON_LINE, height=1).pack(side="top", fill="x")
         self.ribbons = {}
-        for name in ("Home", "Comment", "Shapes", "Edit", "Sign", "Photos", "Adjust", "Organize", "Document", "Convert", "Tools", "Review", "View"):
+        for name in ("Home", "Comment", "Shapes", "CAD", "Edit", "Sign", "Photos", "Adjust", "Organize", "Document", "Convert", "Tools", "Review", "View"):
             self.ribbons[name] = tk.Frame(holder, bg=RIBBON_BG)
 
         # Home
@@ -1000,6 +1002,9 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             hb.pack(side="left", padx=2)
             self.hl_buttons.append(hb)
         self.style_group(r)
+
+        # CAD
+        self.build_cad_ribbon(self.ribbons["CAD"])
 
         # Shapes
         r = self.ribbons["Shapes"]
@@ -1349,7 +1354,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         self.bind("<Return>", self._key_enter)
         self.bind("<Control-v>", self._key_paste)
         self.bind("<Control-d>", lambda e: None if self._typing() else self.img_duplicate())
-        self.bind("<Escape>", lambda e: (self.exit_fullscreen() if self._fs else None, self.select(None), self.hide_find() if self.find_frame is not None and self.find_frame.winfo_ismapped() else None))
+        self.bind("<Escape>", lambda e: (self.exit_fullscreen() if self._fs else None, self.select(None), self.cad_cancel() if hasattr(self, "_cad") else None, self.hide_find() if self.find_frame is not None and self.find_frame.winfo_ismapped() else None))
         for key, dx, dy in (("Left", -1, 0), ("Right", 1, 0), ("Up", 0, -1), ("Down", 0, 1)):
             self.bind(f"<{key}>", lambda e, a=dx, b=dy: self._key_arrow(a, b, e))
         self.bind("<Prior>", lambda e: self._key_nav(-1))
@@ -1406,7 +1411,9 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             for b in btns:
                 b.set_active(name == t)
         self.canvas.config(cursor=self._tool_cursor(t))
-        self.status.config(text=self.HINTS.get(t) or EXTRA_HINTS.get(t, ""))
+        if hasattr(self, "_cad") and t != self._cad.get("tool"):
+            self.cad_cancel()
+        self.status.config(text=self.HINTS.get(t) or EXTRA_HINTS.get(t) or CAD_HINTS.get(t, ""))
 
     def pick_color(self):
         c = colorchooser.askcolor(color=self._hex(self.color), title="Choose color")
@@ -1690,6 +1697,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         return tr(t.replace("_", " ").capitalize()) if t and t != "view" else tr("Change")
 
     def _push_snapshot(self):
+        self._edit_serial = getattr(self, "_edit_serial", 0) + 1
         self.undo_stack.append(Snap(self.doc.tobytes(encryption=fitz.PDF_ENCRYPT_NONE), self.page_no,
                                     getattr(self, "_snap_label", None) or self._tool_label()))
         self.redo_stack.clear()
@@ -2363,6 +2371,9 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
 
     def draw_floats(self):
         self.tf_draw()
+        if hasattr(self, "_cad"):
+            self.cad_scale_refresh()
+            self.cad_draw()
         self.canvas.delete("fl")
         self._handles = {}
         if not self.doc or not self.floats:
@@ -2809,6 +2820,10 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             return
         if self._text_menu(e):
             return
+        if self.tool.get() in CAD_TOOLS:
+            if self.cad_pending():
+                self.cad_finish()
+            return
         if not self.floats:
             self._cont_focus_at(e)
             if not self.annot_menu(e):
@@ -2856,6 +2871,9 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
                 self.canvas.xview_scroll(dx * 3, "units")
 
     def _key_enter(self, _e):
+        if hasattr(self, "_cad") and self.cad_pending() and not self._typing():
+            self.cad_finish()
+            return
         if not self._typing() and self.floats:
             self.apply_images()
 
@@ -3044,6 +3062,12 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         if self.tf_press(e):
             return
         t = self.tool.get()
+        if t in CAD_TOOLS:
+            self._drag_start = None
+            if not self.cad_pending():
+                self._cont_focus_at(e)
+            self.cad_press(e)
+            return
         if t == "view":
             if self.cont and self.floats:
                 self._cont_focus(self.float_page)
@@ -3062,6 +3086,8 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
                 return
         self._cont_focus_at(e)
         self._drag_start = (self.canvas.canvasx(e.x), self.canvas.canvasy(e.y))
+        if t in SHAPE_TOOLS:
+            self._drag_start = self.cad_snap_canvas(*self._drag_start, shift=False)
         if t == "edittext":
             self.tf_move_begin(e)
         if t == "text":
@@ -3097,6 +3123,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         elif t == "edittext":
             self.tf_move_preview(e)
         elif t in SHAPE_TOOLS:
+            x, y = self.cad_snap_canvas(x, y, bool(e.state & 1), self._drag_start)
             self.draw_shape_preview(t, self._drag_start, (x, y), bool(e.state & 1))
         elif t in ("highlight", "whiteout", "image", "crop", "pagecrop") + tuple(RECT_TOOLS):
             if self._drag_item:
@@ -3123,6 +3150,8 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         t = self.tool.get()
         x0, y0 = self._drag_start
         x1, y1 = self.canvas.canvasx(e.x), self.canvas.canvasy(e.y)
+        if t in SHAPE_TOOLS:
+            x1, y1 = self.cad_snap_canvas(x1, y1, bool(e.state & 1), (x0, y0))
         self._drag_start = None
         self.canvas.delete("preview")
         if self._drag_item:

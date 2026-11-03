@@ -515,6 +515,9 @@ class ViewTools:
         if self.tf and self.tf_motion(e):
             return
         t = self.tool.get()
+        if t.startswith("c_"):
+            self.cad_motion(e)
+            return
         if t in ("edittext", "text", "textbox"):
             now = time.monotonic()
             if now - self._motion_t < 0.05:

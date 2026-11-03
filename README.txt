@@ -108,6 +108,19 @@ PRINTING
 File > Print (Ctrl+P) or the printer button in the quick toolbar: choose the printer, number of copies,
 pages and scale. On Windows the pages are sent straight to the printer - no other PDF program is needed.
 
+NEW IN 4.3
+----------
+  - CAD TOOLS (new "CAD" tab) for plans and technical drawings:
+      Scale      "Set scale" (1:100, 1:50 ... and the unit mm / cm / m / in / ft) or "Calibrate": click two points whose
+                 real distance you know and type it. The scale is remembered for each file.
+      Measure    Distance (with dx, dy and angle), Length of a path, Angle, Area + perimeter - shown in real units.
+                 "Put on page" writes the measurements into the PDF; "Clear" removes them.
+      Draw       Polyline, Polygon, 3-point Arc, Exact line (type length and angle) and Dimension lines with arrows
+                 and the measured length as text. Uses the colour, width, fill and opacity of the CAD tab.
+      Snap       To line ends, middles and corners of the drawing itself, to a grid (size in real units), and to steps of
+                 15 degrees (or hold Shift). Snap also works for the Line / Rectangle / Oval tools of the Shapes tab.
+    Double-click, Enter or right-click finishes a polyline / polygon / path / area; Esc cancels.
+
 NEW IN 4.2
 ----------
   - MUCH BIGGER ZOOM: up to 3200 % (was 400 %). The slider is now logarithmic (small zooms stay easy to set); Ctrl + mouse
