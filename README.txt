@@ -7,8 +7,8 @@ RUN
 2. Double-click run.bat  (installs the needed packages on first run).
    Keep all files of the folder together (claudius.py and the claudius_*.py modules, requirements.txt, claudius.ico, splash.png).
 
-INSTALLER (Claudius-PDF-Editor-Setup-4.1.exe)
-  Double-click build_installer.bat (needs Inno Setup, free: jrsoftware.org/isdl.php) -> installer\Claudius-PDF-Editor-Setup-4.1.exe
+INSTALLER (Claudius-PDF-Editor-Setup-4.2.exe)
+  Double-click build_installer.bat (needs Inno Setup, free: jrsoftware.org/isdl.php) -> installer\Claudius-PDF-Editor-Setup-4.2.exe
   or let GitHub build it: the workflow in claudius_github_repo.zip makes both the .exe and the installer.
   The installer asks for administrator rights and installs into C:\Program Files\Claudius PDF Editor.
   It adds a Start menu folder (program + Uninstall), an optional desktop icon, an optional "Open with" entry for PDFs,
@@ -107,6 +107,18 @@ PRINTING
 --------
 File > Print (Ctrl+P) or the printer button in the quick toolbar: choose the printer, number of copies,
 pages and scale. On Windows the pages are sent straight to the printer - no other PDF program is needed.
+
+NEW IN 4.2
+----------
+  - MUCH BIGGER ZOOM: up to 3200 % (was 400 %). The slider is now logarithmic (small zooms stay easy to set); Ctrl + mouse
+    wheel, the + / - buttons and the slider all reach it. Above a certain size only the part of the page you are looking
+    at is drawn, so it stays fast and uses little memory. Zooming keeps the point in the middle of the window in place.
+    In "continuous" view, a very large zoom switches to one page at a time and goes back when you zoom out.
+  - SHAPES CAN BE ROTATED: a line, arrow, box, ellipse, star ... you draw now stays "floating" like a photo - drag it,
+    pull the corners to resize, drag the blue dot (or type the angle) to rotate. Enter / Apply / changing page / saving
+    puts it on the page. You can keep drawing more shapes while one is waiting.
+  - ROTATE WHAT IS ALREADY ON THE PAGE: right-click a picture > "Rotate this picture" (right, left, 180, any angle), or a
+    drawn shape > "Rotate this shape" (a shape that touches or contains other shapes cannot be rotated on its own).
 
 NEW IN 4.1
 ----------
@@ -273,7 +285,7 @@ NOT TESTED ON REAL HARDWARE
   they were tested here with stand-ins. PDF/A was tested with a stand-in for Ghostscript. If one of them does not
   work on your PC, tell me what the message says.
 
-VERSION 4.1  (4.0 made printing safer, 3.9 made Bold/Italic work when editing text, 3.8 centred the start-up picture, 3.7 made the start faster, 3.6 fixed photo display after saving, 3.5 added the optional update check, 3.4 added Windows pointers and quick delete; 3.3 added text frames, move text and the quick toolbar; 3.2 added the new text window, picture alignment and password fixes; 3.0 added the Settings window, tools and review features; 2.1 added tabs, selection, recovery ...; 2.0 brought the iOS look, dark mode, six languages, printing)
+VERSION 4.2  (4.1 opened several files as tabs, 4.0 made printing safer, 3.9 made Bold/Italic work when editing text, 3.8 centred the start-up picture, 3.7 made the start faster, 3.6 fixed photo display after saving, 3.5 added the optional update check, 3.4 added Windows pointers and quick delete; 3.3 added text frames, move text and the quick toolbar; 3.2 added the new text window, picture alignment and password fixes; 3.0 added the Settings window, tools and review features; 2.1 added tabs, selection, recovery ...; 2.0 brought the iOS look, dark mode, six languages, printing)
 -----------
 All the above, plus the changes listed in 2.0: new look (iOS style, light and dark), 3-D icon buttons,
 quick toolbar, six languages, "Make Claudius PDF Editor the default PDF app", print dialog.

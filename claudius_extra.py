@@ -1296,9 +1296,21 @@ class ExtraMarkup:
                 if fitz.Rect(lk["from"]).contains(pt):
                     link = lk
         pic = self._v3_image_at(pt) if hasattr(self, "_v3_image_at") else None
-        if hit is None and link is None and pic is None:
+        shp = None
+        if hit is None and link is None and pic is None and hasattr(self, "_v3_drawing_at"):
+            try:
+                shp = self._v3_drawing_at(pt)
+                if shp is not None and self.find_line(pt)[1]:      # text first: its menu (edit / delete) stays as before
+                    shp = None
+            except Exception:
+                shp = None
+        if hit is None and link is None and pic is None and shp is None:
             return False
         m = tk.Menu(self, tearoff=0)
+        if shp is not None:
+            self.v3_drawing_items(m, shp)
+            m.tk_popup(e.x_root, e.y_root)
+            return True
         if hit is None and link is None:
             self.v3_picture_items(m, fitz.Rect(pic["bbox"]), pic["xref"])
             m.tk_popup(e.x_root, e.y_root)

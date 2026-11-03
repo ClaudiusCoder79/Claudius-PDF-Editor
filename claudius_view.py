@@ -569,7 +569,7 @@ class ViewTools:
         if self.zoom > zmax + 1e-6:                     # a very large page: never build a gigantic bitmap
             self.zoom = max(0.02, zmax)
             self._sync_zoom = True
-            self.zoom_var.set(self.zoom * 100)
+            self.zoom_var.set(self._zoom_pos(self.zoom))
             self._sync_zoom = False
             self.zoom_lbl.config(text=f"{int(self.zoom * 100)}%")
             self.status.config(text=_tr("Zoom limited because this page is very large."))

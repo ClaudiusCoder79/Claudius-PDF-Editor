@@ -46,8 +46,10 @@ try:
 except ImportError:
     sys.exit("claudius_extra.py is missing - keep it in the same folder as claudius.py")
 
+ZOOM_MIN, ZOOM_MAX = 0.2, 32.0           # 20 % ... 3200 %
+TILE_PIXELS = 12_000_000                 # a page that would need a bigger bitmap than this is drawn in pieces (only what is visible)
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "4.1"
+APP_VERSION = "4.2"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF-Editor"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -336,6 +338,87 @@ def process_image(img, o, use_opacity=True):
     if abs(o.angle) % 360 > 0.01:
         im = im.rotate(-o.angle, resample=BICUBIC, expand=True, fillcolor=(255, 255, 255, 0))
     return im
+
+
+def constrain_shape(kind, a, b, shift):
+    """the end point b of a shape dragged from a: Shift / circle keep a square box, lines snap to 15 degree steps"""
+    ax, ay = a
+    bx, by = b
+    if kind in ("line", "arrow", "darrow"):
+        if shift:
+            ang = math.atan2(by - ay, bx - ax)
+            ang = round(ang / (math.pi / 12)) * (math.pi / 12)
+            d = math.hypot(bx - ax, by - ay)
+            bx, by = ax + d * math.cos(ang), ay + d * math.sin(ang)
+        return (ax, ay), (bx, by)
+    if kind == "circle" or shift:
+        dx, dy = bx - ax, by - ay
+        side = max(abs(dx), abs(dy))
+        bx = ax + math.copysign(side, dx if dx else 1)
+        by = ay + math.copysign(side, dy if dy else 1)
+    return (ax, ay), (bx, by)
+
+
+class FloatShape:
+    """A shape (line, arrow, box, star ...) that floats above the page until it is applied: it can still be moved,
+    resized and rotated, like a pending photo."""
+    kind_label = "shape"
+
+    def __init__(self, kind, a, b, lw, color, fill, opacity):
+        self.id = FloatImage._next
+        FloatImage._next += 1
+        self.kind, self.lw, self.color, self.fill = kind, lw, tuple(color), (tuple(fill) if fill else None)
+        self.name = kind
+        self.opacity = int(opacity)
+        (ax, ay), (bx, by) = a, b
+        self.cx, self.cy = (ax + bx) / 2, (ay + by) / 2
+        self.w, self.h = max(abs(bx - ax), 12.0), max(abs(by - ay), 12.0)
+        self.a_n = ((ax - self.cx) / self.w, (ay - self.cy) / self.h)
+        self.b_n = ((bx - self.cx) / self.w, (by - self.cy) / self.h)
+        self.angle = 0.0
+        # the image-only settings exist so that the common picture commands do no harm
+        self.flip_h = self.flip_v = self.border = False
+        self.brightness = self.contrast = 0
+        self.transp = self.gray = self.bw = False
+        self.transp_thr = 235
+        self.pv_key = self.pv_photo = None
+
+    def local_items(self):
+        a = (self.a_n[0] * self.w, self.a_n[1] * self.h)
+        b = (self.b_n[0] * self.w, self.b_n[1] * self.h)
+        return shape_items(self.kind, a, b, self.lw, False)
+
+    def world_items(self):
+        """the geometry in page (view) space, rotated and moved; boxes and ovals become polygons when rotated"""
+        th = math.radians(self.angle)
+        c, s = math.cos(th), math.sin(th)
+        rotated = abs(self.angle) % 360 > 0.01
+
+        def T(p):
+            return (self.cx + p[0] * c - p[1] * s, self.cy + p[0] * s + p[1] * c)
+        out = []
+        for typ, data, fillable in self.local_items():
+            if typ in ("line", "open", "poly", "head"):
+                out.append((typ, [T(p) for p in data], fillable))
+            else:                                           # rect / rrect / oval: data = (l, t, r, b)
+                l, t, r, b = data
+                if not rotated:
+                    out.append((typ, (self.cx + l, self.cy + t, self.cx + r, self.cy + b), fillable))
+                    continue
+                if typ == "oval":
+                    mx, my, rx, ry = (l + r) / 2, (t + b) / 2, (r - l) / 2, (b - t) / 2
+                    pts = [(mx + rx * math.cos(2 * math.pi * k / 72), my + ry * math.sin(2 * math.pi * k / 72)) for k in range(72)]
+                elif typ == "rrect":
+                    rad = 0.2 * min(r - l, b - t)
+                    pts = []
+                    for (ccx, ccy, a0) in ((r - rad, t + rad, -90), (r - rad, b - rad, 0), (l + rad, b - rad, 90), (l + rad, t + rad, 180)):
+                        for k in range(9):
+                            ang = math.radians(a0 + k * 10)
+                            pts.append((ccx + rad * math.cos(ang), ccy + rad * math.sin(ang)))
+                else:
+                    pts = [(l, t), (r, t), (r, b), (l, b)]
+                out.append(("poly", [T(p) for p in pts], fillable))
+        return out
 
 
 SHAPE_TOOLS = ("line", "arrow", "darrow", "rect", "rrect", "ellipse", "circle",
@@ -1212,8 +1295,8 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         zf.pack(side="right", padx=12)
         self._flat_btn(zf, "⛶", self.fit_page).pack(side="left", padx=(0, 10))
         self._flat_btn(zf, "−", lambda: self.set_zoom(self.zoom / 1.2)).pack(side="left")
-        self.zoom_var = tk.DoubleVar(value=self.zoom * 100)
-        TH.IOSSlider(zf, S, from_=20, to=400, variable=self.zoom_var, length=S(150),
+        self.zoom_var = tk.DoubleVar(value=self._zoom_pos(self.zoom))
+        TH.IOSSlider(zf, S, from_=0, to=100, variable=self.zoom_var, length=S(150),
                      command=self._on_scale).pack(side="left", padx=4)
         self._flat_btn(zf, "+", lambda: self.set_zoom(self.zoom * 1.2)).pack(side="left")
         self.zoom_lbl = tk.Label(zf, text="130%", width=5, bg=BAR_BG, font=(UI_FONT, 9))
@@ -1782,20 +1865,71 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
 
     def set_zoom(self, z, render=True, mode=None):
         self.fit_mode = mode
-        self.zoom = max(0.2, min(4.0, z))
+        old = self.zoom
+        keep = None
+        if render and mode is None and self.doc is not None and not self.cont and abs(z - old) > 1e-9:
+            keep = self._view_center()                  # zoom around what is in the middle of the window
+        self.zoom = max(ZOOM_MIN, min(ZOOM_MAX, z))
+        if self.cont and self.doc is not None and self._cont_too_big():
+            self._cont_auto = True                      # very large zoom: one page at a time (only the visible part is drawn)
+            self.cont = False
+            self.status.config(text=tr("One page at a time for this zoom."))
+        elif getattr(self, "_cont_auto", False) and not self.cont and self.doc is not None and not self._cont_too_big():
+            self._cont_auto = False
+            self.cont = True
         self._sync_zoom = True
-        self.zoom_var.set(self.zoom * 100)
+        self.zoom_var.set(self._zoom_pos(self.zoom))
         self._sync_zoom = False
-        self.zoom_lbl.config(text=f"{int(self.zoom * 100)}%")
+        self.zoom_lbl.config(text=f"{int(round(self.zoom * 100))}%")
         if render:
             self.render()
+            if keep is not None:
+                self._view_center_set(keep)
+
+    @staticmethod
+    def _zoom_pos(z):
+        """slider position 0..100 for a zoom factor (logarithmic: the small zooms stay easy to set)"""
+        return 100.0 * math.log(max(ZOOM_MIN, min(ZOOM_MAX, z)) / ZOOM_MIN) / math.log(ZOOM_MAX / ZOOM_MIN)
+
+    @staticmethod
+    def _zoom_from_pos(p):
+        return ZOOM_MIN * (ZOOM_MAX / ZOOM_MIN) ** (max(0.0, min(100.0, p)) / 100.0)
+
+    def _cont_too_big(self):
+        """True when the pages are too large to be drawn whole at the current zoom (continuous view cannot show that)"""
+        try:
+            r = self.page().rect
+            return r.width * r.height * self.zoom * self.zoom > TILE_PIXELS
+        except Exception:
+            return False
+
+    def _view_center(self):
+        """the page point (in view points) that is in the middle of the window"""
+        cv = self.canvas
+        cx = cv.canvasx(cv.winfo_width() / 2)
+        cy = cv.canvasy(cv.winfo_height() / 2)
+        return ((cx - self.off_x) / max(self.zoom, 1e-6), (cy - self.off_y) / max(self.zoom, 1e-6))
+
+    def _view_center_set(self, pt):
+        cv = self.canvas
+        try:
+            x0, y0, x1, y1 = [float(v) for v in str(cv.cget("scrollregion")).split()]
+        except ValueError:
+            return
+        W, H = max(1.0, x1 - x0), max(1.0, y1 - y0)
+        left = self.off_x + pt[0] * self.zoom - cv.winfo_width() / 2
+        top = self.off_y + pt[1] * self.zoom - cv.winfo_height() / 2
+        cv.xview_moveto(max(0.0, left / W))
+        cv.yview_moveto(max(0.0, top / H))
+        self.update_idletasks()
+        self._tile_update()
 
     def _on_scale(self, v):
         if self._sync_zoom or not self.doc:
             return
         if self._zoom_after:
             self.after_cancel(self._zoom_after)
-        self._zoom_after = self.after(60, lambda: self.set_zoom(float(v) / 100))
+        self._zoom_after = self.after(60, lambda: self.set_zoom(self._zoom_from_pos(float(v))))
 
     def fit_width(self, render=True):
         if not self.doc:
@@ -1844,6 +1978,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         self._update_scrollregion()
 
     def render(self):
+        self._tiled = False
         if self.doc is not None and self.cont:
             return self._render_cont()
         self._gen += 1
@@ -1851,11 +1986,13 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         if self.doc is None:
             self._draw_start_screen()
             return
+        if self._cont_too_big():
+            return self._render_tiled()
         z = safe_zoom(self.page(), self.zoom)
         if z < self.zoom - 1e-6:                 # a very large page: never build a gigantic bitmap
             self.zoom = max(0.02, z)
             self._sync_zoom = True
-            self.zoom_var.set(self.zoom * 100)
+            self.zoom_var.set(self._zoom_pos(self.zoom))
             self._sync_zoom = False
             self.zoom_lbl.config(text=f"{int(self.zoom * 100)}%")
             self.status.config(text="Zoom limited because this page is very large.")
@@ -1874,6 +2011,75 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         self._after_render()
         self.draw_floats()
         self._draw_textsel()
+
+    # ---- very large zoom: only the part of the page that is on screen is drawn
+    def _render_tiled(self):
+        r = self.page().rect
+        self.page_w, self.page_h = int(math.ceil(r.width * self.zoom)), int(math.ceil(r.height * self.zoom))
+        self.off_x, self.off_y = self._offsets()
+        self._tiled = True
+        self._tile_box = None
+        self._tile_photo = None
+        for k, col in zip((7, 5, 3, 1), TH.PAGE_SHADOW):
+            self.canvas.create_rectangle(self.off_x - k + 2, self.off_y - k + 4,
+                                         self.off_x + self.page_w + k - 2, self.off_y + self.page_h + k + 1,
+                                         fill=col, outline="", tags="pg")
+        self.canvas.create_rectangle(self.off_x, self.off_y, self.off_x + self.page_w, self.off_y + self.page_h,
+                                     fill="#1a1a1a" if self.night else "white", outline="", tags="pg")
+        self._tile_item = self.canvas.create_image(self.off_x, self.off_y, anchor="nw", tags="pg")
+        self._update_scrollregion()
+        self._after_render()
+        self.draw_floats()
+        self._draw_textsel()
+        self._tile_update(force=True)
+        self._tile_start()
+
+    def _tile_start(self):
+        if getattr(self, "_tile_job", None):
+            try:
+                self.after_cancel(self._tile_job)
+            except (tk.TclError, ValueError):
+                pass
+        self._tile_job = self.after(120, self._tile_tick)
+
+    def _tile_tick(self):
+        self._tile_job = None
+        if not (self.doc is not None and getattr(self, "_tiled", False) and not self.cont):
+            return
+        try:
+            self._tile_update()
+        except Exception:
+            pass
+        self._tile_job = self.after(120, self._tile_tick)
+
+    def _tile_update(self, force=False):
+        if not getattr(self, "_tiled", False) or self.doc is None or self.cont:
+            return
+        cv = self.canvas
+        cw, ch = max(cv.winfo_width(), 1), max(cv.winfo_height(), 1)
+        vx0, vy0 = cv.canvasx(0), cv.canvasy(0)
+        px0, py0 = self.off_x, self.off_y
+        px1, py1 = px0 + self.page_w, py0 + self.page_h
+        need = (max(vx0, px0), max(vy0, py0), min(vx0 + cw, px1), min(vy0 + ch, py1))
+        if need[2] <= need[0] or need[3] <= need[1]:
+            return
+        box = self._tile_box
+        if not force and box and box[0] <= need[0] and box[1] <= need[1] and box[2] >= need[2] and box[3] >= need[3]:
+            return
+        mx, my = cw * 0.5, ch * 0.5                         # draw a little more than what is visible, so scrolling does not redraw at once
+        while (cw + 2 * mx) * (ch + 2 * my) > 14e6 and mx > 8:
+            mx, my = mx * 0.7, my * 0.7
+        reg = (max(vx0 - mx, px0), max(vy0 - my, py0), min(vx0 + cw + mx, px1), min(vy0 + ch + my, py1))
+        z = self.zoom
+        clip = fitz.Rect((reg[0] - px0) / z, (reg[1] - py0) / z, (reg[2] - px0) / z, (reg[3] - py0) / z)
+        pix = self.page().get_pixmap(matrix=fitz.Matrix(z, z), clip=clip, alpha=False)
+        if self.night:
+            pix.invert_irect(pix.irect)
+        img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+        self._tile_photo = ImageTk.PhotoImage(img)
+        self.canvas.itemconfig(self._tile_item, image=self._tile_photo)
+        self.canvas.coords(self._tile_item, px0 + pix.x, py0 + pix.y)
+        self._tile_box = (px0 + pix.x, py0 + pix.y, px0 + pix.x + pix.width, py0 + pix.y + pix.height)
 
     def update_ui(self):
         name = os.path.basename(self.path) if self.path else ""
@@ -2011,12 +2217,15 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             row=1, column=3, pady=1)
 
     def draw_shape_preview(self, kind, a_canvas, b_canvas, shift):
-        cv = self.canvas
-        cv.delete("shp")
+        self.canvas.delete("shp")
         lw = self.line_width.get()
-        items = shape_items(kind, self._c2v(*a_canvas), self._c2v(*b_canvas), lw, shift)
-        col = self._hex(self.color)
-        fillc = self._hex(self.fill_color) if self.fill_on.get() else ""
+        a, b = constrain_shape(kind, self._c2v(*a_canvas), self._c2v(*b_canvas), shift)
+        items = shape_items(kind, a, b, lw, False)
+        self._draw_shape_items(items, self._hex(self.color), self._hex(self.fill_color) if self.fill_on.get() else "", lw, ("shp",))
+
+    def _draw_shape_items(self, items, col, fillc, lw, tags):
+        """draw shape geometry (view space) on the canvas"""
+        cv = self.canvas
         w = max(1, lw * self.zoom)
 
         def flat(pts):
@@ -2027,31 +2236,42 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
 
         for typ, data, _ in items:
             if typ == "line":
-                cv.create_line(*flat(data), fill=col, width=w, capstyle="round", tags="shp")
+                cv.create_line(*flat(data), fill=col, width=w, capstyle="round", tags=tags)
             elif typ == "open":
-                cv.create_line(*flat(data), fill=col, width=w, capstyle="round", joinstyle="round", tags="shp")
+                cv.create_line(*flat(data), fill=col, width=w, capstyle="round", joinstyle="round", tags=tags)
             elif typ == "poly":
-                cv.create_polygon(*flat(data), outline=col, fill=fillc, width=w, tags="shp")
+                cv.create_polygon(*flat(data), outline=col, fill=fillc, width=w, tags=tags)
             elif typ == "head":
-                cv.create_polygon(*flat(data), outline=col, fill=col, tags="shp")
+                cv.create_polygon(*flat(data), outline=col, fill=col, tags=tags)
             else:
                 x0, y0 = self._v2c(data[0], data[1])
                 x1, y1 = self._v2c(data[2], data[3])
                 if typ == "oval":
-                    cv.create_oval(x0, y0, x1, y1, outline=col, fill=fillc, width=w, tags="shp")
+                    cv.create_oval(x0, y0, x1, y1, outline=col, fill=fillc, width=w, tags=tags)
                 else:
-                    cv.create_rectangle(x0, y0, x1, y1, outline=col, fill=fillc, width=w, tags="shp")
+                    cv.create_rectangle(x0, y0, x1, y1, outline=col, fill=fillc, width=w, tags=tags)
 
     def commit_shape(self, kind, a_canvas, b_canvas, shift):
+        """the dragged shape becomes a floating object: it can be moved, resized and rotated until it is applied"""
         lw = self.line_width.get()
-        items = shape_items(kind, self._c2v(*a_canvas), self._c2v(*b_canvas), lw, shift)
-        if not items:
+        a, b = constrain_shape(kind, self._c2v(*a_canvas), self._c2v(*b_canvas), shift)
+        if not shape_items(kind, a, b, lw, False):
             return
-        self.snapshot()
-        pg = self.page()
+        if self.floats and self.float_page != self.page_no:
+            self.commit_floats()
+        self.float_page = self.page_no
+        o = FloatShape(kind, a, b, lw, self.color, self.fill_color if self.fill_on.get() else None, self.shape_opacity.get())
+        self.floats.append(o)
+        self.modified = True
+        self.select(o)
+        self.update_ui()
+        self.status.config(text=tr("Shape added: drag it to move, corners to resize, blue dot to rotate. Enter = apply to the page."))
+
+    def _flatten_shape(self, pg, o):
+        self._write_shape(pg, o.world_items(), o.lw, o.color, o.fill, max(0.05, min(1.0, o.opacity / 100)))
+
+    def _write_shape(self, pg, items, lw, color, fill, op):
         m = pg.derotation_matrix
-        op = max(0.05, min(1.0, self.shape_opacity.get() / 100))
-        fill = self.fill_color if self.fill_on.get() else None
 
         def P(p):
             return fitz.Point(p[0], p[1]) * m
@@ -2062,7 +2282,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             return r
 
         sh = pg.new_shape()
-        base = dict(width=lw, color=self.color, lineCap=1, lineJoin=1, stroke_opacity=op, fill_opacity=op)
+        base = dict(width=lw, color=color, lineCap=1, lineJoin=1, stroke_opacity=op, fill_opacity=op)
         for typ, data, fillable in items:
             if typ == "line":
                 sh.draw_line(P(data[0]), P(data[1]))
@@ -2077,7 +2297,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             elif typ == "head":
                 pts = [P(p) for p in data]
                 sh.draw_polyline(pts + [pts[0]])
-                sh.finish(fill=self.color, closePath=True, **base)
+                sh.finish(fill=color, closePath=True, **base)
             elif typ == "oval":
                 sh.draw_oval(R(data))
                 sh.finish(fill=fill, closePath=True, **base)
@@ -2088,7 +2308,6 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
                 sh.draw_rect(R(data))
                 sh.finish(fill=fill, closePath=True, **base)
         sh.commit()
-        self.edited()
 
     def _apply_fit(self, render=True):
         if self.fit_mode == "page":
@@ -2150,6 +2369,9 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             return
         tags = ("pg", "fl")
         for o in self.floats:
+            if isinstance(o, FloatShape):
+                self._draw_shape_items(o.world_items(), self._hex(o.color), self._hex(o.fill) if o.fill else "", o.lw, tags)
+                continue
             ph = self.float_preview(o)
             cx, cy = self._v2c(o.cx, o.cy)
             self.canvas.create_image(cx, cy, image=ph, tags=tags)
@@ -2281,6 +2503,8 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             self.status.config(text="Image applied to the page.")
 
     def _flatten(self, pg, o, dpi, q):
+        if isinstance(o, FloatShape):
+            return self._flatten_shape(pg, o)
         th = math.radians(o.angle)
         W = abs(o.w * math.cos(th)) + abs(o.h * math.sin(th))
         H = abs(o.w * math.sin(th)) + abs(o.h * math.cos(th))
@@ -2340,6 +2564,9 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             self._touch()
 
     def img_flip(self, horizontal):
+        if self.need_sel() and isinstance(self.sel, FloatShape):
+            self.status.config(text=tr("Flip works on pictures. Use the rotate dot or the angle box for shapes."))
+            return
         if self.need_sel():
             if horizontal:
                 self.sel.flip_h = not self.sel.flip_h
@@ -2348,6 +2575,8 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             self._touch()
 
     def img_toggle(self, attr):
+        if self.need_sel() and isinstance(self.sel, FloatShape):
+            return
         if self.need_sel():
             o = self.sel
             setattr(o, attr, not getattr(o, attr))
@@ -2400,6 +2629,11 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             self._touch()
 
     def img_reset(self):
+        if self.need_sel() and isinstance(self.sel, FloatShape):
+            self.sel.angle = 0.0
+            self.angle_var.set(0)
+            self._touch()
+            return
         if self.need_sel():
             o = self.sel
             aspect = o.pristine.height / o.pristine.width
@@ -2410,6 +2644,9 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
             self._touch()
 
     def start_crop(self):
+        if self.need_sel() and isinstance(self.sel, FloatShape):
+            self.status.config(text=tr("Crop works on pictures."))
+            return
         if self.need_sel():
             self.set_tool("crop")
             self.status.config(text="Crop: drag a rectangle over the part of the image you want to keep.")
@@ -2483,7 +2720,7 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
         ttk.Button(bf, text="Close", command=dlg.destroy).pack(side="left")
 
     # ---- mouse handling for floating images
-    def _float_press(self, e):
+    def _float_press(self, e, only_sel=False):
         if not self.floats:
             return False
         cx, cy = self.canvas.canvasx(e.x), self.canvas.canvasy(e.y)
@@ -2503,6 +2740,11 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
                                       "g0": (o.cx, o.cy, o.w, o.h), "ci": ci, "P": cs[(ci + 2) % 4]}
                     return True
         vx, vy = self._c2v(cx, cy)
+        if only_sel:                                      # while a shape tool is active only the selected shape reacts
+            if o in self.floats and self.f_hit(o, vx, vy):
+                self.fdrag = {"mode": "move", "o": o, "last": (vx, vy)}
+                return True
+            return False
         for o in reversed(self.floats):
             if self.f_hit(o, vx, vy):
                 self.select(o)
@@ -2813,6 +3055,11 @@ class PdfEditor(TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTool
                 return
             self.canvas.scan_mark(e.x, e.y)
             return
+        if t in SHAPE_TOOLS and isinstance(self.sel, FloatShape) and self.sel in self.floats:
+            if self.cont:
+                self._cont_focus(self.float_page)
+            if self._float_press(e, only_sel=True):       # grab the handles / body of the shape that was just drawn
+                return
         self._cont_focus_at(e)
         self._drag_start = (self.canvas.canvasx(e.x), self.canvas.canvasy(e.y))
         if t == "edittext":

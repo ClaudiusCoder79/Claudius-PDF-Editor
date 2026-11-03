@@ -10,6 +10,7 @@ import copy
 import datetime
 import io
 import json
+import math
 import os
 import re
 import shutil
@@ -798,6 +799,12 @@ class V3Tools:
 
     def v3_picture_items(self, m, bbox, xref):
         """Menu entries for a picture that is already part of the page (also used by the right-click menu)."""
+        rm = tk.Menu(m, tearoff=0)
+        rm.add_command(label="Rotate right 90\u00b0", command=lambda: self.v3_rotate_image(bbox, xref, 90))
+        rm.add_command(label="Rotate left 90\u00b0", command=lambda: self.v3_rotate_image(bbox, xref, -90))
+        rm.add_command(label="Rotate 180\u00b0", command=lambda: self.v3_rotate_image(bbox, xref, 180))
+        rm.add_command(label="Rotate by angle...", command=lambda: self.v3_rotate_ask(lambda a: self.v3_rotate_image(bbox, xref, a)))
+        m.add_cascade(label="Rotate this picture", menu=rm)
         m.add_command(label="Delete this picture", command=lambda: self.v3_delete_image(bbox))
         m.add_command(label="Replace with another picture...", command=lambda: self.v3_replace_image(bbox, xref))
         m.add_command(label="Save this picture as...", command=lambda: self.v3_save_image(xref))
@@ -892,6 +899,155 @@ class V3Tools:
             self._v3_remove_image(pg, bbox)
             pg.insert_image(new, stream=data, keep_proportion=False, overlay=True)
         self._run_edit(work, msg=_tr("Picture moved."))
+
+    def v3_rotate_ask(self, call):
+        """small box that asks for an angle (degrees, clockwise) and then calls call(angle)"""
+        from tkinter import simpledialog
+        v = simpledialog.askfloat(APP, _tr("Angle in degrees (clockwise; negative = anticlockwise):"), parent=self,
+                                  initialvalue=15.0, minvalue=-360.0, maxvalue=360.0)
+        if v is not None and abs(v) > 0.01:
+            call(float(v))
+
+    def v3_rotate_image(self, bbox, xref, deg):
+        """turn a picture that is already part of the page (clockwise, around its centre)"""
+        pg = self.page()
+        try:
+            data, _ext = image_png_bytes(self.doc, xref)
+            im = Image.open(io.BytesIO(data)).convert("RGBA")
+        except Exception as ex:
+            messagebox.showerror(APP, f"{ex}")
+            return
+        deg = float(deg)
+        if abs(deg) % 90 < 1e-6:
+            k = int(round(deg / 90)) % 4
+            if k:
+                im = im.transpose({1: Image.ROTATE_270, 2: Image.ROTATE_180, 3: Image.ROTATE_90}[k])
+        else:
+            im = im.rotate(-deg, resample=Image.BICUBIC, expand=True, fillcolor=(255, 255, 255, 0))
+        th = math.radians(deg)
+        w, h = bbox.width, bbox.height
+        W = abs(w * math.cos(th)) + abs(h * math.sin(th))
+        H = abs(w * math.sin(th)) + abs(h * math.cos(th))
+        cx, cy = (bbox.x0 + bbox.x1) / 2, (bbox.y0 + bbox.y1) / 2
+        new = fitz.Rect(cx - W / 2, cy - H / 2, cx + W / 2, cy + H / 2)
+        buf = io.BytesIO()
+        im.save(buf, "PNG")
+        png = buf.getvalue()
+
+        def work():
+            self._v3_remove_image(pg, bbox)
+            pg.insert_image(new, stream=png, keep_proportion=False, overlay=True)
+        self._run_edit(work, msg=_tr("Picture rotated."))
+
+    # ------------------------------------------------------------------ rotate a drawn shape that is already on the page
+    def _v3_drawing_at(self, pt):
+        """the vector shape (line, box, ellipse, arrow ...) under pt (page space), or None"""
+        pg = self.page()
+        best = None
+        for d in pg.get_drawings():
+            r = fitz.Rect(d["rect"])
+            wd = float(d.get("width") or 1)
+            if r.get_area() > 0.6 * pg.rect.get_area():            # a page background or frame, not a shape
+                continue
+            if not (r + (-wd - 3, -wd - 3, wd + 3, wd + 3)).contains(pt):
+                continue
+            filled = d.get("fill") is not None
+            near = filled and r.contains(pt)
+            if not near:
+                tol = max(3.0, wd / 2 + 2)
+                for it in d["items"]:
+                    if it[0] == "l":
+                        pts = [it[1], it[2]]
+                    elif it[0] == "c":
+                        pts = [it[1], it[2], it[3], it[4]]
+                    elif it[0] == "re":
+                        q = it[1]
+                        pts = [fitz.Point(q.x0, q.y0), fitz.Point(q.x1, q.y0), fitz.Point(q.x1, q.y1), fitz.Point(q.x0, q.y1), fitz.Point(q.x0, q.y0)]
+                    elif it[0] == "qu":
+                        q = it[1]
+                        pts = [q.ul, q.ur, q.lr, q.ll, q.ul]
+                    else:
+                        continue
+                    for a, b in zip(pts, pts[1:]):
+                        ab = b - a
+                        L2 = ab.x * ab.x + ab.y * ab.y
+                        u = 0.0 if L2 < 1e-9 else max(0.0, min(1.0, ((pt.x - a.x) * ab.x + (pt.y - a.y) * ab.y) / L2))
+                        if math.hypot(pt.x - (a.x + u * ab.x), pt.y - (a.y + u * ab.y)) <= tol:
+                            near = True
+                            break
+                    if near:
+                        break
+            if near and (best is None or r.get_area() <= fitz.Rect(best["rect"]).get_area()):
+                best = d
+        return best
+
+    def v3_rotate_drawing(self, d, deg):
+        """turn a drawn shape (clockwise, around its centre): it is taken off the page and drawn again, rotated"""
+        pg = self.page()
+        r = fitz.Rect(d["rect"])
+        wd = float(d.get("width") or 1)
+        zone = r + (-wd / 2 - 1, -wd / 2 - 1, wd / 2 + 1, wd / 2 + 1)
+        curved = any(it[0] == "c" for it in d["items"])              # curves can only be taken off by "touching": other shapes there must not exist
+        for o in pg.get_drawings():                                  # other shapes in the way would be taken off with it
+            orr = fitz.Rect(o["rect"])
+            if o is d or o["rect"] == d["rect"] or orr.is_empty:
+                continue
+            if (zone.intersects(orr) if curved else zone.contains(orr)):
+                messagebox.showinfo(APP, _tr("This shape touches or contains other shapes, so it cannot be rotated on its own."))
+                return
+        c = fitz.Point((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2)
+        M = fitz.Matrix(1, 0, 0, 1, -c.x, -c.y) * fitz.Matrix(float(deg)) * fitz.Matrix(1, 0, 0, 1, c.x, c.y)
+        covered = getattr(fitz, "PDF_REDACT_LINE_ART_REMOVE_IF_COVERED", None)
+        none_img = getattr(fitz, "PDF_REDACT_IMAGE_NONE", 0)
+        no_text = getattr(fitz, "PDF_REDACT_TEXT_NONE", None)
+        if covered is None:
+            messagebox.showinfo(APP, _tr("This version of the PDF library cannot rotate drawn shapes."))
+            return
+
+        def work():
+            pg.add_redact_annot(zone, fill=False)
+            kw = {"text": no_text} if no_text is not None else {}
+            touched = getattr(fitz, "PDF_REDACT_LINE_ART_REMOVE_IF_TOUCHED", covered)
+            pg.apply_redactions(images=none_img, graphics=touched if curved else covered, **kw)
+            sh = pg.new_shape()
+            for it in d["items"]:
+                k = it[0]
+                if k == "l":
+                    sh.draw_line(it[1] * M, it[2] * M)
+                elif k == "c":
+                    sh.draw_bezier(it[1] * M, it[2] * M, it[3] * M, it[4] * M)
+                elif k == "re":
+                    q = it[1]
+                    pts = [fitz.Point(q.x0, q.y0) * M, fitz.Point(q.x1, q.y0) * M, fitz.Point(q.x1, q.y1) * M, fitz.Point(q.x0, q.y1) * M]
+                    sh.draw_polyline(pts + [pts[0]])
+                elif k == "qu":
+                    q = it[1]
+                    pts = [q.ul * M, q.ur * M, q.lr * M, q.ll * M]
+                    sh.draw_polyline(pts + [pts[0]])
+            kw2 = dict(color=d.get("color"), fill=d.get("fill"), width=wd,
+                       closePath=bool(d.get("closePath")), even_odd=bool(d.get("even_odd")))
+            for key in ("stroke_opacity", "fill_opacity"):
+                if d.get(key) is not None:
+                    kw2[key] = d[key]
+            cap = d.get("lineCap")
+            cap = cap[0] if isinstance(cap, (list, tuple)) and cap else cap
+            if isinstance(cap, int):
+                kw2["lineCap"] = cap
+            if isinstance(d.get("lineJoin"), (int, float)):
+                kw2["lineJoin"] = int(d["lineJoin"])
+            if d.get("dashes") and d["dashes"] not in ("[] 0", "[ ] 0"):
+                kw2["dashes"] = d["dashes"]
+            sh.finish(**kw2)
+            sh.commit()
+        self._run_edit(work, msg=_tr("Shape rotated."))
+
+    def v3_drawing_items(self, m, d):
+        rm = tk.Menu(m, tearoff=0)
+        rm.add_command(label="Rotate right 90\u00b0", command=lambda: self.v3_rotate_drawing(d, 90))
+        rm.add_command(label="Rotate left 90\u00b0", command=lambda: self.v3_rotate_drawing(d, -90))
+        rm.add_command(label="Rotate 180\u00b0", command=lambda: self.v3_rotate_drawing(d, 180))
+        rm.add_command(label="Rotate by angle...", command=lambda: self.v3_rotate_ask(lambda a: self.v3_rotate_drawing(d, a)))
+        m.add_cascade(label="Rotate this shape", menu=rm)
 
     def v3_replace_image(self, bbox, xref):
         p = filedialog.askopenfilename(parent=self, filetypes=[("Images", "*.png *.jpg *.jpeg *.bmp *.gif *.webp *.tif *.tiff"), ("All", "*.*")])
