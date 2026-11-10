@@ -108,6 +108,15 @@ PRINTING
 File > Print (Ctrl+P) or the printer button in the quick toolbar: choose the printer, number of copies,
 pages and scale. On Windows the pages are sent straight to the printer - no other PDF program is needed.
 
+NEW IN 4.6
+----------
+  - CLEANER TOOLBAR (Foxit-style): ten tabs instead of fourteen (File, Home, Comment, Edit, Pictures, Organize, Forms,
+    Convert, Document, CAD, View), flat icons with a label and no group captions. Related tools sit in drop-down
+    buttons (Shapes, Rotate, Move, Insert, Crop, Fit, More...). Everything is still found with Ctrl+K and can be put on
+    the quick toolbar. Settings > Toolbar switches back to the coloured buttons.
+  - FASTER START: a small window appears at once, before the heavy parts load; toolbars are built in the background
+    while you open your first file; clean-up of old temporary files runs a few seconds after start.
+
 NEW IN 4.5
 ----------
   - UPDATES: a failed check at start-up (for example no internet yet) is now tried again at the next start instead of

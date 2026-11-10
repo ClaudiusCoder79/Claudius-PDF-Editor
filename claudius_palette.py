@@ -19,18 +19,18 @@ RECENT_MAX = 8
 
 # (text, keywords, method, sidebar-or-tab hint)
 EXTRA_COMMANDS = (
-    ("Compare two PDFs", "difference changes versions", "dlg_compare", "Review"),
-    ("Accessibility check", "pdf/ua screen reader tags title language", "dlg_accessibility", "Review"),
+    ("Compare two PDFs", "difference changes versions", "dlg_compare", "Document"),
+    ("Accessibility check", "pdf/ua screen reader tags title language", "dlg_accessibility", "Document"),
     ("Apply PDF standards (PDF/A)", "archive pdfa standard", "dlg_pdfa", "Document"),
     ("Remove metadata", "clean hidden information author privacy", "dlg_clean_metadata", "Document"),
-    ("Check redactions", "redaction verify blackout hidden text", "dlg_redaction_check", "Review"),
-    ("Redact patterns", "emails phone numbers iban regex blackout", "dlg_redact_patterns", "Review"),
+    ("Check redactions", "redaction verify blackout hidden text", "dlg_redaction_check", "Document"),
+    ("Redact patterns", "emails phone numbers iban regex blackout", "dlg_redact_patterns", "Edit"),
     ("Compress PDF", "reduce size optimise optimize smaller", "dlg_compress", "Document"),
     ("Protect with password", "encrypt security permissions", "dlg_protect", "Document"),
     ("Watermark", "stamp background text draft confidential", "dlg_watermark", "Document"),
     ("Header and footer", "page numbers date", "dlg_header_footer", "Document"),
     ("Bates numbering", "legal numbering stamp", "dlg_bates", "Document"),
-    ("Guided actions", "wizard steps workflow checklist", "dlg_guided", "Tools"),
+    ("Guided actions", "wizard steps workflow checklist", "dlg_guided", "Document"),
 )
 
 # preset name -> (description, [(label, method)])
@@ -97,8 +97,8 @@ class PaletteTools:
                 ("Measure objects", "measure distance length angle area perimeter scale cad", "CAD", lambda: (self.show_tab("CAD"), self.set_tool("c_dist"))),
                 ("Add comments", "comment note sticky highlight underline annotate", "Comment", lambda: self.show_tab("Comment")),
                 ("Organize pages", "pages rotate move delete reorder extract insert", "Organize", lambda: self.show_tab("Organize")),
-                ("Fill and sign", "form signature initials checkmark", "Sign", lambda: self.show_tab("Sign")),
-                ("Prepare a form", "form fields", "Sign", lambda: self.show_tab("Sign"))):
+                ("Fill and sign", "form signature initials checkmark", "Forms", lambda: self.show_tab("Forms")),
+                ("Prepare a form", "form fields", "Forms", lambda: self.show_tab("Forms"))):
             if tab in self.ribbons:
                 cmds.append({"id": "a:" + text, "text": text, "kw": kw, "tab": tab, "run": fn})
         for name in self.ribbons:

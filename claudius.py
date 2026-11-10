@@ -19,6 +19,64 @@ import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import ttk, filedialog, messagebox, simpledialog, colorchooser
 
+
+# ---- first sign of life: a small window that appears BEFORE the heavy modules (PyMuPDF, Pillow ...) are loaded
+_PRE = None
+
+
+def _pre_splash():
+    scale = 1.0
+    if sys.platform == "win32":
+        try:                                            # same high-DPI setup as claudius_extra (must happen before any window exists)
+            import ctypes
+            try:
+                ctypes.windll.shcore.SetProcessDpiAwareness(1)
+            except Exception:
+                ctypes.windll.user32.SetProcessDPIAware()
+            scale = max(1.0, ctypes.windll.user32.GetDpiForSystem() / 96.0)
+        except Exception:
+            pass
+    dark = False
+    if sys.platform == "win32":
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize") as k:
+                dark = winreg.QueryValueEx(k, "AppsUseLightTheme")[0] == 0
+        except Exception:
+            pass
+    bg, fg, sub, line = ("#2c2c2e", "#f2f2f7", "#aeaeb2", "#48484a") if dark else ("#ffffff", "#1c1c1e", "#636366", "#c7c7cc")
+    r = tk.Tk()
+    r.overrideredirect(True)
+    r.configure(bg=line, padx=1, pady=1)
+    r.tk.call("tk", "scaling", scale * 96 / 72)
+    card = tk.Frame(r, bg=bg, padx=int(46 * scale), pady=int(30 * scale))
+    card.pack()
+    tk.Label(card, text="Claudius PDF Editor", font=("Segoe UI" if sys.platform == "win32" else "TkDefaultFont", 20, "bold"), bg=bg, fg=fg).pack()
+    tk.Label(card, text="Starting...", font=("Segoe UI" if sys.platform == "win32" else "TkDefaultFont", 10), bg=bg, fg=sub).pack(pady=(12, 0))
+    r.update_idletasks()
+    w, h = r.winfo_reqwidth(), r.winfo_reqheight()
+    r.geometry("%dx%d+%d+%d" % (w, h, (r.winfo_screenwidth() - w) // 2, (r.winfo_screenheight() - h) // 2))
+    r.attributes("-topmost", True)
+    r.update()
+    return r
+
+
+def _drop_pre_splash():
+    global _PRE
+    if _PRE is not None:
+        try:
+            _PRE.destroy()
+        except Exception:
+            pass
+        _PRE = None
+
+
+if __name__ == "__main__" and not os.environ.get("CLAUDIUS_NO_SPLASH"):
+    try:
+        _PRE = _pre_splash()
+    except Exception:
+        _PRE = None
+
 # PyMuPDF 2.x tries to load an optional AI "layout" add-on (onnx models, several 100 MB) when it starts. This program
 # does not use it, and inside the EXE its model files are not packed, so it is switched off here.
 for _m in ("pymupdf.layout", "pymupdf_layout", "pymupdf4llm"):
@@ -52,7 +110,7 @@ from claudius_palette import PaletteTools
 ZOOM_MIN, ZOOM_MAX = 0.2, 32.0           # 20 % ... 3200 %
 TILE_PIXELS = 12_000_000                 # a page that would need a bigger bitmap than this is drawn in pieces (only what is visible)
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "4.5"
+APP_VERSION = "4.6"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF-Editor"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -502,12 +560,17 @@ def shape_items(kind, a, b, lw, shift=False):
     return []
 
 
+TAB_NAMES = ("Home", "Comment", "Edit", "Pictures", "Organize", "Forms", "Convert", "Document", "CAD", "View")
+RIBBON_FLAT = True                       # simple flat buttons (File > Settings can switch back to the coloured tiles)
+
+
 class RibbonButton(tk.Canvas):
     """Ribbon button: a glossy 3-D icon tile over a label. It lifts when hovered and pushes in when pressed."""
 
-    def __init__(self, parent, icon, text, command, icon_size=17, width=60, color=None):
-        need = tkfont.Font(family=UI_FONT, size=8).measure(tr(text)) + S(16)      # longer translations get wider buttons
-        self._bw, self._bh = max(S(width), need), S(64)
+    def __init__(self, parent, icon, text, command, icon_size=17, width=60, color=None, arrow=False):
+        self._arrow = arrow
+        need = tkfont.Font(family=UI_FONT, size=8).measure(tr(text) + (" \u25be" if arrow else "")) + S(16)      # longer translations get wider buttons
+        self._bw, self._bh = max(S(width), need), S(58) if RIBBON_FLAT else S(64)
         super().__init__(parent, width=self._bw, height=self._bh, bg=RIBBON_BG, highlightthickness=0, cursor="hand2")
         self.command = command
         self.active = False
@@ -525,6 +588,17 @@ class RibbonButton(tk.Canvas):
     def _paint(self):
         self.delete("all")
         state = "pressed" if self.pressed else "active" if self.active else "hover" if self.hover else "normal"
+        label = tr(self._text) + (" \u25be" if self._arrow else "") if self._arrow else self._text
+        if RIBBON_FLAT:                                   # simple look: no tile, grey line-style glyph, light highlight
+            cx, cy = self._bw // 2, S(21)
+            if state != "normal":
+                round_rect(self, S(2), S(1), self._bw - S(2), self._bh - S(2), S(8),
+                           fill=TH.TINT if state != "hover" else HOVER_BG, outline="")
+            on = state in ("active", "pressed", "hover")
+            self.create_text(cx, cy + (S(1) if state == "pressed" else 0), text=self._icon, font=(ICON_FONT, self._isize),
+                             fill=ACCENT if on else TH.SECOND)
+            self.create_text(cx, S(46), text=label, font=(UI_FONT, 8), fill=ACCENT if self.active else TH.LABEL)
+            return
         self._tile = TH.tile_photo(self, S(36), self._color, state, S)
         cx, cy = self._bw // 2, S(24)
         if self.active:
@@ -534,7 +608,7 @@ class RibbonButton(tk.Canvas):
         # glyph with a faint shadow so it looks embossed into the tile
         self.create_text(cx + 1, cy + S(1) + lift + 1, text=self._icon, font=(ICON_FONT, self._isize), fill="#14305c")
         self.create_text(cx, cy + lift, text=self._icon, font=(ICON_FONT, self._isize), fill="white")
-        self.create_text(self._bw // 2, S(54), text=self._text, font=(UI_FONT, 8),
+        self.create_text(self._bw // 2, S(54), text=label, font=(UI_FONT, 8),
                          fill=ACCENT if self.active else TH.LABEL)
 
     def _enter(self, _e):
@@ -585,8 +659,14 @@ class QuickButton(tk.Canvas):
     def _paint(self):
         self.delete("all")
         state = "pressed" if self.pressed else "hover" if self.hover else "normal"
-        self._img = TH.tile_photo(self, self._qs, self._color, state, S)
         c = (self._qs + 2 * S(4)) // 2
+        if RIBBON_FLAT:
+            if state != "normal" or self.active:
+                round_rect(self, S(1), S(1), 2 * c - S(1), 2 * c - S(1), S(7), fill=TH.TINT if (self.active or state == "pressed") else HOVER_BG, outline="")
+            self.create_text(c, c + (S(1) if state == "pressed" else 0), text=self._icon, font=(ICON_FONT, 12),
+                             fill=ACCENT if (self.active or state != "normal") else TH.SECOND)
+            return
+        self._img = TH.tile_photo(self, self._qs, self._color, state, S)
         lift = S(1) if self.pressed else 0
         if self.active:                                   # switched on: a ring around the tile
             self.create_rectangle(1, 1, 2 * c - 1, 2 * c - 1, outline=ACCENT, width=2)
@@ -651,6 +731,8 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
     def __init__(self, path=None):
         self._t_build = _time.time()
         super().__init__()
+        if _PRE is not None:
+            tk._default_root = self                      # the early splash window must not become the home of images and variables
         self._splash = None
         if not os.environ.get("CLAUDIUS_NO_SPLASH"):
             self.withdraw()
@@ -708,6 +790,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         self._view_init()
         self._pro_init()
         self._v3_init()
+        globals()["RIBBON_FLAT"] = bool(self.cfg.get("ribbon_flat", True))
         self._load_icons()
         self._build_topbar()
         self._build_ribbons()
@@ -787,6 +870,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
             sp.attributes("-topmost", True)
             sp.update()
             self._splash = sp
+            _drop_pre_splash()
         except Exception:
             self._splash = None
 
@@ -884,7 +968,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
             file_pill.winfo_rootx(), file_pill.winfo_rooty() + file_pill.winfo_height()), S, bg=BAR_BG)
         file_pill.pack(side="left", padx=(0, 4), pady=S(6))
 
-        for name in ("Home", "Comment", "Shapes", "CAD", "Edit", "Sign", "Photos", "Adjust", "Organize", "Document", "Convert", "Tools", "Review", "View"):
+        for name in TAB_NAMES:
             pill = PillTab(top, name, lambda n=name: self.show_tab(n), S, bg=BAR_BG)
             pill.pack(side="left", padx=1, pady=S(6))
             self.tab_labels[name] = pill
@@ -924,8 +1008,9 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         self._grp_i = getattr(self, "_grp_i", -1) + 1
         inner._tile_color = TH.TILE_COLORS[self._grp_i % len(TH.TILE_COLORS)]
         inner.pack(side="top", fill="both", expand=True)
-        tk.Label(outer, text=caption, font=(UI_FONT, 8), bg=RIBBON_BG, fg=TH.TERTIARY).pack(side="bottom")
-        tk.Frame(parent, bg=RIBBON_LINE, width=1).pack(side="left", fill="y", pady=8, padx=4)
+        if not RIBBON_FLAT:
+            tk.Label(outer, text=tr(caption) if False else caption, font=(UI_FONT, 8), bg=RIBBON_BG, fg=TH.TERTIARY).pack(side="bottom")
+        tk.Frame(parent, bg=RIBBON_LINE, width=1).pack(side="left", fill="y", pady=S(12) if RIBBON_FLAT else 8, padx=4)
         return inner
 
     def rb(self, parent, icon, text, cmd, tool=None, size=17, width=60):
@@ -937,6 +1022,58 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         b.pack(side="left", padx=1)
         self.qt_register(b, icon, text, cmd, tool, size, width)
         return b
+
+    def rbm(self, parent, icon, text, items, size=17, width=60):
+        """ribbon button that opens a drop-down menu.  items: (label, tool, command) tuples, None = separator"""
+        def popup():
+            m = tk.Menu(self, tearoff=0)
+            for it in items:
+                if it is None:
+                    m.add_separator()
+                    continue
+                label, tool, cmd = it
+                m.add_command(label=tr(label), command=(lambda t=tool: self.set_tool(t)) if tool else cmd)
+            m.tk_popup(b.winfo_rootx(), b.winfo_rooty() + b.winfo_height())
+        b = RibbonButton(parent, icon, text, popup, size, width, arrow=True)
+        b._tools = {it[1] for it in items if it and it[1]}
+        self.__dict__.setdefault("menu_buttons", []).append(b)
+        b.pack(side="left", padx=1)
+        reg = self.__dict__.setdefault("qt_reg", {})
+        for it in items:                                   # every menu entry can be found by Ctrl+K and put on the quick toolbar
+            if it is None:
+                continue
+            label, tool, cmd = it
+            reg["%s|%s|%s" % (label, tool or "", icon)] = {"icon": icon, "text": label, "cmd": cmd, "tool": tool, "size": size,
+                                                           "width": width, "color": None, "btn": b}
+        return b
+
+    def combined_style_group(self, parent):
+        """one compact style box for markup, notes and shapes"""
+        g = self.group(parent, "Style")
+        f = tk.Frame(g, bg=RIBBON_BG)
+        f.pack(padx=6, pady=(2, 0))
+
+        def lab(t, r, c):
+            tk.Label(f, text=tr(t), font=(UI_FONT, 8), bg=RIBBON_BG, fg=TH.LABEL).grid(
+                row=r, column=c, sticky="w", padx=(10 if c else 0, 4), pady=1)
+
+        lab("Color", 0, 0)
+        sw = tk.Button(f, width=4, relief="solid", bd=1, bg=self._hex(self.color),
+                       activebackground=self._hex(self.color), command=self.pick_color, cursor="hand2")
+        sw.grid(row=0, column=1, pady=1)
+        self.swatches.append(sw)
+        lab("Width", 1, 0)
+        ttk.Spinbox(f, from_=1, to=20, width=4, textvariable=self.line_width).grid(row=1, column=1, pady=1)
+        tk.Checkbutton(f, text=tr("Fill"), variable=self.fill_on, bg=RIBBON_BG, activebackground=RIBBON_BG,
+                       font=(UI_FONT, 8)).grid(row=0, column=2, sticky="w", padx=(10, 0))
+        fsw = tk.Button(f, width=4, relief="solid", bd=1, bg=self._hex(self.fill_color),
+                        activebackground=self._hex(self.fill_color), command=self.pick_fill_color, cursor="hand2")
+        fsw.grid(row=0, column=3, pady=1)
+        self.fill_swatches.append(fsw)
+        lab("Opacity %", 1, 2)
+        ttk.Spinbox(f, from_=10, to=100, increment=10, width=4, textvariable=self.shape_opacity).grid(row=1, column=3, pady=1)
+        lab("Size", 0, 4)
+        ttk.Spinbox(f, from_=6, to=96, width=4, textvariable=self.font_size).grid(row=0, column=5, pady=1)
 
     def style_group(self, parent):
         g = self.group(parent, "Style")
@@ -957,12 +1094,12 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         ttk.Spinbox(f, from_=1, to=20, width=4, textvariable=self.line_width).grid(row=2, column=1, padx=6, pady=1)
 
     def _build_ribbons(self):
-        holder = tk.Frame(self, bg=RIBBON_BG, height=S(96))
+        holder = tk.Frame(self, bg=RIBBON_BG, height=S(76) if RIBBON_FLAT else S(96))
         holder.pack(side="top", fill="x")
         holder.pack_propagate(False)
         tk.Frame(self, bg=RIBBON_LINE, height=1).pack(side="top", fill="x")
         self.ribbons = {}
-        for name in ("Home", "Comment", "Shapes", "CAD", "Edit", "Sign", "Photos", "Adjust", "Organize", "Document", "Convert", "Tools", "Review", "View"):
+        for name in TAB_NAMES:
             self.ribbons[name] = tk.Frame(holder, bg=RIBBON_BG)
 
         self._rb_built = set()
@@ -979,6 +1116,8 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
             t = self.tool.get()
             for b in self.tool_buttons.get(t, []):
                 b.set_active(True)
+            for mb in self.__dict__.get("menu_buttons", ()):
+                mb.set_active(t in mb._tools)
         except Exception:
             pass
 
@@ -1001,13 +1140,12 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
     def _ribbons_done(self):
         pass
 
+    # ---------------------------------------------------------------- the tabs (kept short: rarely used buttons live in drop-down menus)
     def _rb_Home(self):
-        # Home
         r = self.ribbons["Home"]
         g = self.group(r, "File")
         self.rb(g, "📂", "Open", self.open_dialog)
         self.rb(g, "💾", "Save", self.save)
-        self.rb(g, "📄", "Save As", self.save_as)
         self.rb(g, "🖨", "Print", self.do_print)
         g = self.group(r, "Edit")
         self.rb(g, "↶", "Undo", self.undo, size=19)
@@ -1016,41 +1154,40 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         self.rb(g, "✋", "Hand", None, tool="view")
         self.rb(g, "🔍", "Find", self.show_find)
         self.rb(g, "✏", "Edit text", None, tool="edittext", size=19, width=62)
-        g = self.group(r, "Photos")
-        self.rb(g, "🖼", "Add Image", self.add_images)
-        self.rb(g, "📋", "Paste", self.paste_image)
-        g = self.group(r, "Zoom")
+        self.rb(g, "🌐", "Look up", self.dlg_lookup, size=18, width=56)
+        g = self.group(r, "View")
         self.rb(g, "−", "Zoom out", lambda: self.set_zoom(self.zoom / 1.2), size=20)
         self.rb(g, "+", "Zoom in", lambda: self.set_zoom(self.zoom * 1.2), size=20)
-        self.rb(g, "↔", "Fit width", self.fit_width, size=19)
-        self.rb(g, "⛶", "Fit page", self.fit_page, size=19)
-        g = self.group(r, "Rotate")
-        self.rb(g, "⟲", "Left", lambda: self.rotate_selected(-90), size=19)
-        self.rb(g, "⟳", "Right", lambda: self.rotate_selected(90), size=19)
+        self.rbm(g, "⛶", "Fit", [("Fit page", None, self.fit_page), ("Fit width", None, self.fit_width)], size=19)
+        self.rbm(g, "⟳", "Rotate", [("Rotate left", None, lambda: self.rotate_selected(-90)),
+                                    ("Rotate right", None, lambda: self.rotate_selected(90))], size=19)
+        g = self.group(r, "Image")
+        self.rb(g, "🖼", "Add Image", self.add_images)
 
     def _rb_Comment(self):
-        # Comment
         r = self.ribbons["Comment"]
         g = self.group(r, "Text markup")
         self.rb(g, "🖍", "Highlight", None, tool="highlight")
         self.rb(g, "U̲", "Underline", None, tool="underline", size=19, width=62)
         self.rb(g, "S̶", "Strikeout", None, tool="strike", size=19, width=62)
         self.rb(g, "≈", "Squiggly", None, tool="squiggly", size=20, width=62)
-        g = self.group(r, "Draw")
-        self.rb(g, "✎", "Pen", None, tool="pen", size=19)
-        self.rb(g, "▭", "Rectangle", None, tool="rect", size=20)
-        self.rb(g, "○", "Ellipse", None, tool="ellipse", size=20)
-        self.rb(g, "➜", "Arrow", None, tool="arrow", size=19)
-        g = self.group(r, "Comments list")
-        self.rb(g, "💬", "Show list", lambda: self.set_sidebar("comments"), size=18, width=62)
-        self.rb(g, "⤓", "Export", self.export_comments, size=19, width=56)
-        self.rb(g, "⤒", "Import", self.import_comments, size=19, width=56)
-        self.rb(g, "≣", "Summary", self.export_comment_summary, size=19, width=62)
         g = self.group(r, "Notes")
         self.rb(g, "🗒", "Sticky note", None, tool="sticky", size=18, width=70)
         self.rb(g, "▤", "Text box", None, tool="textbox", size=19)
         self.rb(g, "T", "Text", None, tool="text", size=19)
         self.rb(g, "🔖", "Stamps", self.show_stamp_menu, size=18)
+        g = self.group(r, "Draw")
+        self.rb(g, "✎", "Pen", None, tool="pen", size=19)
+        self.rbm(g, "▭", "Shapes", [
+            ("Line", "line", None), ("Arrow", "arrow", None), ("Double arrow", "darrow", None), None,
+            ("Rectangle", "rect", None), ("Rounded", "rrect", None), ("Ellipse", "ellipse", None), ("Circle", "circle", None),
+            ("Triangle", "triangle", None), ("Diamond", "diamond", None), ("Star", "star", None), None,
+            ("Check", "check", None), ("Cross", "cross", None), ("Plus", "plus", None)], size=20)
+        g = self.group(r, "Comments")
+        self.rb(g, "💬", "Show list", lambda: self.set_sidebar("comments"), size=18, width=62)
+        self.rbm(g, "⤓", "More", [("Export comments", None, self.export_comments), ("Import comments", None, self.import_comments),
+                                  ("Comment summary", None, self.export_comment_summary),
+                                  ("Export highlights", None, self.dlg_export_highlights)], size=19)
         g = self.group(r, "Highlight color")
         hf = tk.Frame(g, bg=RIBBON_BG)
         hf.pack(padx=6, pady=14)
@@ -1059,31 +1196,9 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
                            cursor="hand2", command=lambda c=col: setattr(self, "hl_color", c))
             hb.pack(side="left", padx=2)
             self.hl_buttons.append(hb)
-        self.style_group(r)
-
-    def _rb_Shapes(self):
-        # Shapes
-        r = self.ribbons["Shapes"]
-        g = self.group(r, "Lines")
-        self.rb(g, "╱", "Line", None, tool="line", size=20)
-        self.rb(g, "➜", "Arrow", None, tool="arrow", size=19)
-        self.rb(g, "⟷", "Double arrow", None, tool="darrow", size=19, width=82)
-        g = self.group(r, "Shapes")
-        self.rb(g, "▭", "Rectangle", None, tool="rect", size=20)
-        self.rb(g, "▢", "Rounded", None, tool="rrect", size=20)
-        self.rb(g, "⬭", "Ellipse", None, tool="ellipse", size=20)
-        self.rb(g, "○", "Circle", None, tool="circle", size=20)
-        self.rb(g, "△", "Triangle", None, tool="triangle", size=20)
-        self.rb(g, "◇", "Diamond", None, tool="diamond", size=20)
-        self.rb(g, "☆", "Star", None, tool="star", size=20)
-        g = self.group(r, "Marks")
-        self.rb(g, "✓", "Check", None, tool="check", size=20)
-        self.rb(g, "✗", "Cross", None, tool="cross", size=20)
-        self.rb(g, "＋", "Plus", None, tool="plus", size=20)
-        self.shape_style_group(r)
+        self.combined_style_group(r)
 
     def _rb_Edit(self):
-        # Edit
         r = self.ribbons["Edit"]
         g = self.group(r, "Change")
         self.rb(g, "✏", "Edit text", None, tool="edittext", size=19, width=62)
@@ -1095,134 +1210,91 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         g = self.group(r, "Cover / remove")
         self.rb(g, "◻", "Whiteout", None, tool="whiteout", size=20)
         self.rb(g, "▮", "Redact", None, tool="redact", size=20)
-        self.rb(g, "⌫", "Redact text", self.dlg_redact_text, size=19, width=66)
-        self.rb(g, "✱", "Redact data", self.dlg_redact_patterns, size=19, width=66)
+        self.rbm(g, "⌫", "Redact more", [("Redact text", None, self.dlg_redact_text), ("Redact data", None, self.dlg_redact_patterns)], size=19, width=72)
         g = self.group(r, "Copy")
         self.rb(g, "⎘", "Extract text", None, tool="extract", size=19, width=70)
-        g = self.group(r, "Undo")
-        self.rb(g, "↶", "Undo", self.undo, size=19)
-        self.rb(g, "↷", "Redo", self.redo, size=19)
         self.style_group(r)
 
-    def _rb_Sign(self):
-        # Sign
-        r = self.ribbons["Sign"]
+    def _rb_Pictures(self):
+        r = self.ribbons["Pictures"]
+        g = self.group(r, "Insert")
+        self.rb(g, "🖼", "Add Image", self.add_images)
+        self.rb(g, "📋", "Paste", self.paste_image)
+        self.rb(g, "📑", "Photos→Pages", self.photos_to_pages, width=86)
+        self.rb(g, "🖼", "Edit pictures", None, tool="editimage", size=18, width=74)
+        g = self.group(r, "Arrange")
+        self.rb(g, "⊞", "Align", self.img_align_menu)
+        self.rb(g, "❐", "Duplicate", self.img_duplicate)
+        self.rbm(g, "⬆", "Order", [("Fit page", None, self.img_fit_page), ("To front", None, lambda: self.img_order(True)),
+                                   ("To back", None, lambda: self.img_order(False))], size=17)
+        self.rb(g, "🗑", "Delete", self.img_delete)
+        g = self.group(r, "Transform")
+        self.rbm(g, "⟲", "Rotate / flip", [("Left 90°", None, lambda: self.img_rotate(-90)), ("Right 90°", None, lambda: self.img_rotate(90)),
+                                           ("Flip H", None, lambda: self.img_flip(True)), ("Flip V", None, lambda: self.img_flip(False))],
+                 size=19, width=72)
+        self.rb(g, "✂", "Crop", self.start_crop, size=19)
+        af = tk.Frame(g, bg=RIBBON_BG)
+        af.pack(side="left", padx=8, pady=10)
+        tk.Label(af, text=tr("Angle °"), font=(UI_FONT, 8), bg=RIBBON_BG, fg=TH.LABEL).pack(anchor="w")
+        asp = ttk.Spinbox(af, from_=-180, to=180, width=5, textvariable=self.angle_var, command=self._angle_changed)
+        asp.pack()
+        asp.bind("<Return>", self._angle_changed)
+        ttk.Checkbutton(af, text=tr("Keep aspect"), variable=self.keep_aspect).pack(anchor="w", pady=(3, 0))
+        g = self.group(r, "Effects")
+        self.rbm(g, "☀", "Effects", [("Adjust…", None, self.adjust_dialog), ("No white", None, lambda: self.img_toggle("transp")),
+                                     ("Grayscale", None, lambda: self.img_toggle("gray")), ("B & W", None, lambda: self.img_toggle("bw")),
+                                     ("Border", None, lambda: self.img_toggle("border"))], size=19)
+        self.rb(g, "↺", "Reset image", self.img_reset, size=19, width=70)
+        g = self.group(r, "Finish")
+        self.rb(g, "✔", "Apply", self.apply_images, size=19)
+        qf = tk.Frame(g, bg=RIBBON_BG)
+        qf.pack(side="left", padx=8, pady=8)
+        tk.Label(qf, text=tr("Output quality"), font=(UI_FONT, 8), bg=RIBBON_BG, fg=TH.LABEL).pack(anchor="w")
+        ttk.Combobox(qf, textvariable=self.quality_var, values=list(QUALITY), state="readonly", width=16).pack(pady=2)
+
+    def _rb_Organize(self):
+        r = self.ribbons["Organize"]
+        g = self.group(r, "Pages")
+        self.rbm(g, "⟳", "Rotate", [("Rotate left", None, lambda: self.rotate_selected(-90)),
+                                    ("Rotate right", None, lambda: self.rotate_selected(90))], size=19)
+        self.rb(g, "🗑", "Delete", self.delete_selected)
+        self.rbm(g, "▲", "Move", [("Move up", None, lambda: self.move_page(-1)), ("Move down", None, lambda: self.move_page(1))], size=15)
+        self.rb(g, "📄", "Extract", self.dlg_extract)
+        self.rb(g, "✂", "Split", self.dlg_split, size=19)
+        g = self.group(r, "Insert")
+        self.rb(g, "＋", "Blank page", self.insert_blank, size=19, width=66)
+        self.rbm(g, "⧉", "Insert", [("Insert PDF", None, self.dlg_insert_pdf), ("Merge PDFs", None, self.dlg_merge),
+                                     ("Merge + pick", None, self.dlg_merge_pick), ("Photos→Pages", None, self.photos_to_pages)], size=19)
+        g = self.group(r, "Crop pages")
+        self.rbm(g, "⛶", "Crop", [("Drag area", "pagecrop", None), ("Margins…", None, self.dlg_crop),
+                                  ("Crop / resize", None, self.dlg_page_crop)], size=18)
+        g = self.group(r, "Export")
+        self.rb(g, "🖼", "To PNG", self.export_png)
+        self.rb(g, "↶", "Undo history", self.dlg_undo_history, size=18, width=78)
+
+    def _rb_Forms(self):
+        r = self.ribbons["Forms"]
         g = self.group(r, "Sign")
         self.rb(g, "✍", "Signature", lambda: self.show_sign_menu("sign"), size=19, width=68)
         self.rb(g, "Aa", "Initials", lambda: self.show_sign_menu("init"), size=17)
         self.rb(g, "🔖", "Stamps", self.show_stamp_menu, size=18)
         self.rb(g, "📅", "Date", None, tool="date", size=18)
-        g = self.group(r, "Fill & create forms")
+        self.rb(g, "✍", "Signature block", self.dlg_signature_block, size=18, width=84)
+        g = self.group(r, "Create form fields")
         self.rb(g, "☐", "Text field", None, tool="formtext", size=20, width=66)
         self.rb(g, "☑", "Check box", None, tool="formcheck", size=20, width=66)
+        self.rb(g, "▾", "Drop-down", None, tool="formcombo", size=18, width=66)
+        self.rb(g, "◉", "Radio button", None, tool="formradio", size=18, width=76)
+        g = self.group(r, "Manage fields")
+        self.rb(g, "☰", "Field editor", self.dlg_field_editor, size=18, width=72)
+        self.rb(g, "⇥", "Fill from table", self.dlg_fill_from_data, size=18, width=88)
         self.rb(g, "▦", "Show fields", self.toggle_fields, size=18, width=68)
         g = self.group(r, "How to fill a form")
-        tk.Label(g, text="Choose the Hand tool and click a field\n(text, check box, drop-down list).",
+        tk.Label(g, text=tr("Choose the Hand tool and click a field\n(text, check box, drop-down list)."),
                  font=(UI_FONT, 8), bg=RIBBON_BG, fg=TH.SECOND, justify="left").pack(padx=8, pady=14)
         self.style_group(r)
 
-    def _rb_Photos(self):
-        # Photos
-        r = self.ribbons["Photos"]
-        g = self.group(r, "Insert")
-        self.rb(g, "🖼", "Add Image", self.add_images)
-        self.rb(g, "📋", "Paste", self.paste_image)
-        self.rb(g, "📑", "Photos→Pages", self.photos_to_pages, width=86)
-        g = self.group(r, "Arrange")
-        self.rb(g, "⛶", "Fit page", self.img_fit_page)
-        self.rb(g, "⊞", "Align", self.img_align_menu)
-        self.rb(g, "❐", "Duplicate", self.img_duplicate)
-        self.rb(g, "⬆", "To front", lambda: self.img_order(True), size=15)
-        self.rb(g, "⬇", "To back", lambda: self.img_order(False), size=15)
-        self.rb(g, "🗑", "Delete", self.img_delete)
-        g = self.group(r, "Finish")
-        self.rb(g, "✔", "Apply", self.apply_images, size=19)
-        qf = tk.Frame(g, bg=RIBBON_BG)
-        qf.pack(side="left", padx=8, pady=8)
-        tk.Label(qf, text="Output quality", font=(UI_FONT, 8), bg=RIBBON_BG, fg=TH.LABEL).pack(anchor="w")
-        ttk.Combobox(qf, textvariable=self.quality_var, values=list(QUALITY), state="readonly",
-                     width=18).pack(pady=2)
-
-    def _rb_Adjust(self):
-        # Adjust
-        r = self.ribbons["Adjust"]
-        g = self.group(r, "Rotate / flip")
-        self.rb(g, "⟲", "Left 90°", lambda: self.img_rotate(-90), size=19)
-        self.rb(g, "⟳", "Right 90°", lambda: self.img_rotate(90), size=19)
-        self.rb(g, "⇋", "Flip H", lambda: self.img_flip(True), size=19)
-        self.rb(g, "⇅", "Flip V", lambda: self.img_flip(False), size=19)
-        af = tk.Frame(g, bg=RIBBON_BG)
-        af.pack(side="left", padx=8, pady=14)
-        tk.Label(af, text="Angle °", font=(UI_FONT, 8), bg=RIBBON_BG, fg=TH.LABEL).pack(anchor="w")
-        asp = ttk.Spinbox(af, from_=-180, to=180, width=5, textvariable=self.angle_var,
-                          command=self._angle_changed)
-        asp.pack()
-        asp.bind("<Return>", self._angle_changed)
-        ttk.Checkbutton(af, text="Keep aspect", variable=self.keep_aspect).pack(anchor="w", pady=(3, 0))
-        g = self.group(r, "Crop")
-        self.rb(g, "✂", "Crop", self.start_crop, size=19)
-        g = self.group(r, "Effects")
-        self.rb(g, "☀", "Adjust…", self.adjust_dialog, size=19)
-        self.rb(g, "◧", "No white", lambda: self.img_toggle("transp"), size=19)
-        self.rb(g, "◐", "Grayscale", lambda: self.img_toggle("gray"), size=19, width=64)
-        self.rb(g, "◑", "B & W", lambda: self.img_toggle("bw"), size=19)
-        self.rb(g, "▣", "Border", lambda: self.img_toggle("border"), size=19)
-        g = self.group(r, "Undo")
-        self.rb(g, "↺", "Reset image", self.img_reset, size=19, width=70)
-
-    def _rb_Organize(self):
-        # Organize
-        r = self.ribbons["Organize"]
-        g = self.group(r, "Rotate")
-        self.rb(g, "⟲", "Left", lambda: self.rotate_selected(-90), size=19)
-        self.rb(g, "⟳", "Right", lambda: self.rotate_selected(90), size=19)
-        g = self.group(r, "Pages")
-        self.rb(g, "🗑", "Delete", self.delete_selected)
-        self.rb(g, "▲", "Move up", lambda: self.move_page(-1), size=15)
-        self.rb(g, "▼", "Move down", lambda: self.move_page(1), size=15)
-        self.rb(g, "📄", "Extract", self.dlg_extract)
-        self.rb(g, "✂", "Split", self.dlg_split, size=19)
-        g = self.group(r, "Insert")
-        self.rb(g, "＋", "Blank page", self.insert_blank, size=19, width=66)
-        self.rb(g, "⧉", "Insert PDF", self.dlg_insert_pdf, size=19, width=66)
-        self.rb(g, "⛓", "Merge PDFs", self.dlg_merge, size=19, width=66)
-        self.rb(g, "📑", "Photos→Pages", self.photos_to_pages, width=86)
-        g = self.group(r, "Crop pages")
-        self.rb(g, "⛶", "Drag area", None, tool="pagecrop", size=18, width=62)
-        self.rb(g, "▭", "Margins…", self.dlg_crop, size=19, width=62)
-        g = self.group(r, "Export")
-        self.rb(g, "🖼", "To PNG", self.export_png)
-
-    def _rb_Document(self):
-        # Document
-        r = self.ribbons["Document"]
-        g = self.group(r, "Page decoration")
-        self.rb(g, "💧", "Watermark", self.dlg_watermark, size=18, width=76)
-        self.rb(g, "🎨", "Background", self.dlg_background, size=18, width=78)
-        self.rb(g, "⇱", "Header/Footer", self.dlg_header_footer, size=18, width=92)
-        self.rb(g, "#", "Page numbers", self.dlg_page_numbers, size=19, width=88)
-        g = self.group(r, "Optimize")
-        self.rb(g, "🗜", "Compress", self.dlg_compress, size=18, width=66)
-        self.rb(g, "▩", "Flatten", self.do_flatten, size=18)
-        self.rb(g, "👁", "OCR", self.dlg_ocr, size=18)
-        g = self.group(r, "Security")
-        self.rb(g, "🔒", "Protect", self.dlg_protect, size=18)
-        self.rb(g, "🔓", "Unprotect", self.do_unprotect, size=18, width=70)
-        g = self.group(r, "Numbering")
-        self.rb(g, "§", "Bates", self.dlg_bates, size=19, width=60)
-        self.rb(g, "ⅰ", "Page labels", self.dlg_page_labels, size=19, width=72)
-        g = self.group(r, "Archive")
-        self.rb(g, "🗄", "PDF/A", self.dlg_pdfa, size=18, width=56)
-        g = self.group(r, "Check / attach")
-        self.rb(g, "♿", "Accessibility", self.dlg_accessibility, size=18, width=84)
-        self.rb(g, "📎", "Attachments", self.dlg_attachments, size=18, width=78)
-        self.rb(g, "⇄", "Compare", self.dlg_compare, size=18, width=62)
-        g = self.group(r, "Info")
-        self.rb(g, "ℹ", "Properties", self.dlg_properties, size=18, width=66)
-        self.rb(g, "🖨", "Print", self.do_print, size=18)
-
     def _rb_Convert(self):
-        # Convert
         r = self.ribbons["Convert"]
         g = self.group(r, "Convert PDF to")
         for key, icon, label in (("word", "W", "Word"), ("excel", "X", "Excel"), ("pptx", "P", "PowerPoint"),
@@ -1234,68 +1306,56 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         self.rb(g, "🖷", "From scanner", self.dlg_scan, size=18, width=78)
         self.rb(g, "📑", "Photos→Pages", self.photos_to_pages, width=86)
 
-    def _rb_Tools(self):
-        # Tools (version 3)
-        r = self.ribbons["Tools"]
-        g = self.group(r, "Workflow")
-        self.rb(g, "\u2714", "Guided actions", self.dlg_guided, size=18, width=78)
-        self.rb(g, "\U0001F50D", "Find commands", self.pal_open, size=18, width=78)
-        g = self.group(r, "Pictures & signature")
-        self.rb(g, "🖼", "Edit pictures", None, tool="editimage", size=18, width=74)
-        self.rb(g, "✍", "Signature block", self.dlg_signature_block, size=18, width=84)
-        g = self.group(r, "Pages")
-        self.rb(g, "⛶", "Crop / resize", self.dlg_page_crop, size=18, width=76)
-        self.rb(g, "⛓", "Merge + pick", self.dlg_merge_pick, size=18, width=72)
-        self.rb(g, "↶", "Undo history", self.dlg_undo_history, size=18, width=78)
-        g = self.group(r, "Forms")
-        self.rb(g, "▾", "Drop-down", None, tool="formcombo", size=18, width=66)
-        self.rb(g, "◉", "Radio button", None, tool="formradio", size=18, width=76)
-        self.rb(g, "☰", "Field editor", self.dlg_field_editor, size=18, width=72)
-        self.rb(g, "⇥", "Fill from table", self.dlg_fill_from_data, size=18, width=88)
-        g = self.group(r, "Files")
-        self.rb(g, "▤", "Batch folder", self.dlg_batch, size=18, width=72)
-        self.rb(g, "🗜", "Smart compress", self.dlg_smart_compress, size=18, width=88)
-        self.rb(g, "🔍", "Search folder", self.dlg_folder_search, size=18, width=82)
-
-    def _rb_Review(self):
-        r = self.ribbons["Review"]
-        g = self.group(r, "Highlights & checks")
-        self.rb(g, "🖍", "Export highlights", self.dlg_export_highlights, size=18, width=96)
-        self.rb(g, "🌐", "Look up", self.dlg_lookup, size=18, width=56)
+    def _rb_Document(self):
+        r = self.ribbons["Document"]
+        g = self.group(r, "Protect")
+        self.rb(g, "🔒", "Protect", self.dlg_protect, size=18)
+        self.rb(g, "🔓", "Unprotect", self.do_unprotect, size=18, width=70)
         self.rb(g, "✔", "Redaction check", self.dlg_redaction_check, size=18, width=92)
         self.rb(g, "🧹", "Clean data", self.dlg_clean_metadata, size=18, width=72)
+        g = self.group(r, "Pages")
+        self.rb(g, "💧", "Watermark", self.dlg_watermark, size=18, width=76)
+        self.rb(g, "🎨", "Background", self.dlg_background, size=18, width=78)
+        self.rbm(g, "⇱", "Header / numbers", [("Header/Footer", None, self.dlg_header_footer), ("Page numbers", None, self.dlg_page_numbers),
+                                              ("Bates", None, self.dlg_bates), ("Page labels", None, self.dlg_page_labels)], size=18, width=96)
+        g = self.group(r, "Optimize")
+        self.rbm(g, "🗜", "Optimize", [("Compress", None, self.dlg_compress), ("Smart compress", None, self.dlg_smart_compress),
+                                       ("Flatten", None, self.do_flatten), ("OCR", None, self.dlg_ocr)], size=18)
+        self.rb(g, "🗄", "PDF/A", self.dlg_pdfa, size=18, width=56)
+        g = self.group(r, "Check")
+        self.rb(g, "♿", "Accessibility", self.dlg_accessibility, size=18, width=84)
+        self.rb(g, "⇄", "Compare", self.dlg_compare, size=18, width=62)
+        self.rb(g, "📎", "Attachments", self.dlg_attachments, size=18, width=78)
+        self.rb(g, "ℹ", "Properties", self.dlg_properties, size=18, width=66)
+        g = self.group(r, "Files")
+        self.rbm(g, "▤", "Folder", [("Batch folder", None, self.dlg_batch), ("Search folder", None, self.dlg_folder_search)], size=18)
         g = self.group(r, "Program")
+        self.rb(g, "✔", "Guided actions", self.dlg_guided, size=18, width=78)
         self.rb(g, "⚙", "Settings", self.dlg_settings, size=18, width=60)
 
     def _rb_View(self):
-        # View
         r = self.ribbons["View"]
-        g = self.group(r, "Zoom")
-        self.rb(g, "−", "Zoom out", lambda: self.set_zoom(self.zoom / 1.2), size=20)
-        self.rb(g, "+", "Zoom in", lambda: self.set_zoom(self.zoom * 1.2), size=20)
-        self.rb(g, "↔", "Fit width", self.fit_width, size=19)
-        self.rb(g, "⛶", "Fit page", self.fit_page, size=19)
         g = self.group(r, "Navigate")
         self.rb(g, "◀", "Previous", lambda: self.goto(self.page_no - 1), size=15)
         self.rb(g, "▶", "Next", lambda: self.goto(self.page_no + 1), size=15)
-        g = self.group(r, "Quick toolbar")
-        self.rb(g, "★", "Quick toolbar", self.qt_toggle, size=19, width=70)
         g = self.group(r, "Page view")
         self.rb(g, "☰", "Continuous", self.toggle_continuous, size=19, width=70)
         self.rb(g, "☾", "Night view", self.toggle_night, size=19, width=70)
         self.rb(g, "⛶", "Full screen", lambda: self.toggle_fullscreen(False), size=19, width=70)
         self.rb(g, "▶", "Presentation", lambda: self.toggle_fullscreen(True), size=17, width=78)
-        g = self.group(r, "Listen")
-        self.rb(g, "🔊", "Read aloud", self.dlg_read_aloud, size=18, width=70)
-        self.rb(g, "⏹", "Stop", self.stop_speaking, size=17, width=48)
         g = self.group(r, "Side panel")
         self.rb(g, "◧", "Hide / show", self.toggle_sidebar, size=18, width=70)
         self.rb(g, "▤", "Pages", lambda: self.set_sidebar("pages"), size=18)
         self.rb(g, "🔖", "Bookmarks", lambda: self.set_sidebar("bookmarks"), size=18, width=66)
         self.rb(g, "💬", "Comments", lambda: self.set_sidebar("comments"), size=18, width=66)
-        g = self.group(r, "Search / forms")
-        self.rb(g, "🔍", "Find", self.show_find)
-        self.rb(g, "▦", "Show fields", self.toggle_fields, size=18, width=68)
+        g = self.group(r, "Listen")
+        self.rb(g, "🔊", "Read aloud", self.dlg_read_aloud, size=18, width=70)
+        self.rb(g, "⏹", "Stop", self.stop_speaking, size=17, width=48)
+        g = self.group(r, "Toolbar")
+        self.rb(g, "★", "Quick toolbar", self.qt_toggle, size=19, width=70)
+
+    def _rb_CAD(self):
+        self.build_cad_ribbon(self.ribbons["CAD"])
 
     # --------------------------------------------------------------- body
 
@@ -1461,7 +1521,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
     HINTS = {"view": "Hand tool: drag over text to select it (Ctrl+C copies), drag elsewhere to move the page. Ctrl + mouse wheel to zoom.",
              "text": "Text: click or drag on the page to make a text frame, then type. Drag the frame to move it.",
              "highlight": "Highlight: drag over the text.",
-             "rect": "Rectangle: drag to draw. Hold Shift for a square. Turn on Fill in the Shapes tab for solid shapes.",
+             "rect": "Rectangle: drag to draw. Hold Shift for a square. Turn on Fill in the Comment tab for solid shapes.",
              "pen": "Pen: hold the mouse button and draw.",
              "whiteout": "Whiteout: drag over content to cover it with white.",
              "image": "Image: drag a box, then choose an image.",
@@ -1485,6 +1545,8 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         for name, btns in self.tool_buttons.items():
             for b in btns:
                 b.set_active(name == t)
+        for mb in self.__dict__.get("menu_buttons", ()):
+            mb.set_active(t in mb._tools)
         self.canvas.config(cursor=self._tool_cursor(t))
         if hasattr(self, "_cad") and t != self._cad.get("tool"):
             self.cad_cancel()
@@ -3327,6 +3389,9 @@ def main():
         except Exception:
             receiver = None
     app = PdfEditor(paths)
+    _drop_pre_splash()
+    if os.environ.get("CLAUDIUS_QUIT_MS"):                 # used by the automatic tests: close the window after this many ms
+        app.after(int(os.environ["CLAUDIUS_QUIT_MS"]), app.destroy)
     if receiver is not None:
         app.single_listen(receiver)
     app.mainloop()

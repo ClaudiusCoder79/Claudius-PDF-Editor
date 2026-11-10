@@ -2263,8 +2263,9 @@ class ExtraTools(ExtraMarkup, ExtraConvert, Win11Tools):
 
     # ------------------------------------------------------------------ setup / helpers
     def _extra_init(self):
-        try:
-            sweep_stale_temp()
+        try:                                  # tidy the temp folder a few seconds after start-up, in the background
+            import threading
+            self.after(6000, lambda: threading.Thread(target=sweep_stale_temp, daemon=True).start())
         except Exception:
             pass
         self.sel_pages = set()

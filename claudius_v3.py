@@ -42,7 +42,7 @@ V3_DEFAULTS = {
     "hl_names": ["Important", "Agree", "Question", "Reference"],
     "hl_colors": None,
     "presets": {}, "positions": {},
-    "single_instance": True, "check_updates": False, "update_last": "", "update_skip": "",
+    "single_instance": True, "ribbon_flat": True, "check_updates": False, "update_last": "", "update_skip": "",
 }
 MAX_POSITIONS = 300
 
@@ -416,7 +416,7 @@ class V3Tools:
         import claudius_i18n as i18n
         c = self.cfg
         d = self._dlg("Settings")
-        v = {k: tk.BooleanVar(value=bool(c[k])) for k in ("remember_window", "remember_view", "remember_position", "autosave", "check_updates", "single_instance")}
+        v = {k: tk.BooleanVar(value=bool(c[k])) for k in ("remember_window", "remember_view", "remember_position", "autosave", "check_updates", "single_instance", "ribbon_flat")}
         r = 0
         self._label(d, "Language", bold=True).grid(row=r, column=0, sticky="w", pady=(0, 3))
         lang = tk.StringVar(value=dict(i18n.LANGS).get(i18n.current, i18n.current))
@@ -470,6 +470,11 @@ class V3Tools:
         r += 1
         self._label(d, "Several files", bold=True).grid(row=r, column=0, sticky="w", pady=(10, 3))
         tk.Checkbutton(d, text="Open files as tabs in the running window (not as extra program windows)", variable=v["single_instance"],
+                       bg=BG, activebackground=BG, fg=TH.LABEL, selectcolor=TH.CARD, font=(UI_FONT, 9)
+                       ).grid(row=r, column=1, columnspan=2, sticky="w", pady=(10, 0))
+        r += 1
+        self._label(d, "Toolbar", bold=True).grid(row=r, column=0, sticky="w", pady=(10, 3))
+        tk.Checkbutton(d, text="Simple flat toolbar (untick for the coloured tiles; applies after a restart)", variable=v["ribbon_flat"],
                        bg=BG, activebackground=BG, fg=TH.LABEL, selectcolor=TH.CARD, font=(UI_FONT, 9)
                        ).grid(row=r, column=1, columnspan=2, sticky="w", pady=(10, 0))
         r += 1
