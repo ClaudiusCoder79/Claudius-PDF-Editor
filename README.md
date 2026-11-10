@@ -30,7 +30,7 @@ Optional tools used when present: Tesseract (OCR), LibreOffice (Office conversio
 
 | File | Purpose |
 |---|---|
-| `claudius.py` + `claudius_*.py` (16 modules) | the program - all must stay together |
+| `claudius.py` + `claudius_*.py` (17 modules) | the program - all must stay together |
 | `claudius.ico`, `splash.png`, `version_info.txt` | icon, preview of the start-up window, Windows version info |
 | `FREEWARE.txt`, `LICENSE` | freeware notice shown by the installer; the licence (GNU AGPL v3) |
 | `build_exe.bat`, `build_installer.bat`, `installer.iss` | local builds |

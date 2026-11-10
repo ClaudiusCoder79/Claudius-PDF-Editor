@@ -25,7 +25,7 @@ class QuickTools:
         reg = self.__dict__.setdefault("qt_reg", {})
         key = "%s|%s|%s" % (text, tool or "", icon)
         reg[key] = {"icon": icon, "text": text, "cmd": cmd, "tool": tool, "size": size, "width": width,
-                    "color": getattr(btn, "_color", None)}
+                    "color": getattr(btn, "_color", None), "btn": btn}
         btn.bind("<Button-3>", lambda e, k=key: self.qt_ribbon_menu(e, k), add="+")
         btn._qt_key = key
 

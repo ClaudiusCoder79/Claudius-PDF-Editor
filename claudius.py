@@ -47,11 +47,12 @@ except ImportError:
     sys.exit("claudius_extra.py is missing - keep it in the same folder as claudius.py")
 
 from claudius_cad import CadTools, CAD_TOOLS, CAD_HINTS
+from claudius_palette import PaletteTools
 
 ZOOM_MIN, ZOOM_MAX = 0.2, 32.0           # 20 % ... 3200 %
 TILE_PIXELS = 12_000_000                 # a page that would need a bigger bitmap than this is drawn in pieces (only what is visible)
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "4.3"
+APP_VERSION = "4.4"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF-Editor"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -646,7 +647,7 @@ class Snap(tuple):
         return s
 
 
-class PdfEditor(CadTools, TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools, tk.Tk):
+class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, UpdateTools, V3Tools, V3bTools, ViewTools, FeatureTools, ProTools, ExtraTools, tk.Tk):
     def __init__(self, path=None):
         self._t_build = _time.time()
         super().__init__()
@@ -833,6 +834,10 @@ class PdfEditor(CadTools, TextTools, FrameTools, QuickTools, UpdateTools, V3Tool
         self.qt_top_btn = QuickButton(qa, "★", f"{tr('Show / hide the quick toolbar')}  (Ctrl+Shift+Q)", self.qt_toggle,
                                       TH.TILE_COLORS[4 % len(TH.TILE_COLORS)])
         self.qt_top_btn.pack(side="left", padx=(8, 1), pady=S(3))
+        self.pal_btn = QuickButton(qa, "\U0001F50D", f"{tr('Find tools and commands')}  (Ctrl+K)", self.pal_open, TH.TILE_COLORS[5 % len(TH.TILE_COLORS)])
+        self.pal_btn.pack(side="left", padx=1, pady=S(3))
+        self._name_lbl = name_lbl
+        self.bind("<Configure>", self._topbar_fit, add="+")
         tk.Frame(top, bg=RIBBON_LINE, width=1).pack(side="left", fill="y", pady=S(8), padx=(0, 8))
 
         self.file_menu = tk.Menu(self, tearoff=0)
@@ -887,6 +892,20 @@ class PdfEditor(CadTools, TextTools, FrameTools, QuickTools, UpdateTools, V3Tool
         self.doc_lbl = tk.Label(top, text="", bg=BAR_BG, fg=TH.SECOND, font=(UI_FONT, 9))
         self.doc_lbl.pack(side="right", padx=14)
         tk.Frame(self, bg=RIBBON_LINE, height=1).pack(side="top", fill="x")
+
+    def _topbar_fit(self, e=None):
+        """on narrower windows the program name is hidden so that all tabs stay visible"""
+        if e is not None and e.widget is not self:
+            return
+        try:
+            narrow = self.winfo_width() < 1620
+            shown = self._name_lbl.winfo_manager() == "pack"
+            if narrow and shown:
+                self._name_lbl.pack_forget()
+            elif not narrow and not shown:
+                self._name_lbl.pack(side="left", padx=(7, 0))
+        except Exception:
+            pass
 
     def show_tab(self, name):
         self.current_tab = name
@@ -1173,6 +1192,9 @@ class PdfEditor(CadTools, TextTools, FrameTools, QuickTools, UpdateTools, V3Tool
 
         # Tools (version 3)
         r = self.ribbons["Tools"]
+        g = self.group(r, "Workflow")
+        self.rb(g, "\u2714", "Guided actions", self.dlg_guided, size=18, width=78)
+        self.rb(g, "\U0001F50D", "Find commands", self.pal_open, size=18, width=78)
         g = self.group(r, "Pictures & signature")
         self.rb(g, "🖼", "Edit pictures", None, tool="editimage", size=18, width=74)
         self.rb(g, "✍", "Signature block", self.dlg_signature_block, size=18, width=84)
@@ -1329,6 +1351,7 @@ class PdfEditor(CadTools, TextTools, FrameTools, QuickTools, UpdateTools, V3Tool
 
     def _bind_keys(self):
         self.bind("<Control-o>", lambda e: self.open_dialog())
+        self.bind("<Control-k>", lambda e: (self.pal_open(), "break")[1])
         self.bind("<Control-s>", lambda e: self.save())
         self.bind("<Control-S>", lambda e: self.save_as())
         self.bind("<Control-z>", lambda e: self.undo())

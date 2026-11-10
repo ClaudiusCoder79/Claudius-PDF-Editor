@@ -2002,11 +2002,31 @@ class ExtraConvert:
             c.tag_bind(tag, "<Button-1>", lambda e, f=cmd: f())
             c.tag_bind(tag, "<Enter>", lambda e, t=tag: (c.itemconfig(t + "&&polygon", fill=TH.TINT), c.config(cursor="hand2")))
             c.tag_bind(tag, "<Leave>", lambda e, t=tag: (c.itemconfig(t + "&&polygon", fill=TH.CARD), c.config(cursor="")))
+        # recommended tools: two rows of three cards
+        c.create_text(cx - S(300), top + S(290), text=_tr("Recommended tools"), font=(UI_FONT, 10, "bold"), fill=TH.SECOND, anchor="w")
+        try:
+            from claudius_palette import START_CARDS
+        except Exception:
+            START_CARDS = ()
+        cw, ch, cg = S(194), S(48), S(9)
+        for i, (icon, title, sub, cmdname) in enumerate(START_CARDS):
+            x = cx - S(300) + (i % 3) * (cw + cg)
+            y = top + S(310) + (i // 3) * (ch + cg)
+            tag = f"tc{i}"
+            round_rect(c, x, y, x + cw, y + ch, S(10), fill=TH.CARD, outline=TH.LINE_SOFT, tags=tag)
+            c.create_text(x + S(18), y + ch // 2, text=icon, font=(UI_FONT, 15), fill=ACCENT, tags=tag)
+            c.create_text(x + S(38), y + ch // 2 - S(8), text=_tr(title), font=(UI_FONT, 9, "bold"), fill=TH.LABEL, anchor="w", tags=tag)
+            c.create_text(x + S(38), y + ch // 2 + S(9), text=_tr(sub), font=(UI_FONT, 8), fill=TH.TERTIARY, anchor="w", tags=tag)
+            c.tag_bind(tag, "<Button-1>", lambda e, n=cmdname: self.pal_start_card(n))
+            c.tag_bind(tag, "<Enter>", lambda e, t=tag: (c.itemconfig(t + "&&polygon", fill=TH.TINT), c.config(cursor="hand2")))
+            c.tag_bind(tag, "<Leave>", lambda e, t=tag: (c.itemconfig(t + "&&polygon", fill=TH.CARD), c.config(cursor="")))
         rec = self.load_recents()
-        if rec:
-            c.create_text(cx - S(300), top + S(300), text="Recent files", font=(UI_FONT, 10, "bold"), fill=TH.SECOND, anchor="w")
-            for i, p in enumerate(rec[:6]):
-                y = top + S(328) + i * S(26)
+        y0 = top + S(310) + 2 * (ch + cg) + S(14)
+        room = (h - y0 - S(30)) // S(26)
+        if rec and room >= 2:
+            c.create_text(cx - S(300), y0, text=_tr("Recent files"), font=(UI_FONT, 10, "bold"), fill=TH.SECOND, anchor="w")
+            for i, p in enumerate(rec[:min(6, room - 1)]):
+                y = y0 + S(26) + i * S(26)
                 tag = f"rc{i}"
                 c.create_text(cx - S(300), y, text=os.path.basename(p), font=(UI_FONT, 10), fill=ACCENT, anchor="w", tags=tag)
                 c.create_text(cx + S(40), y, text=os.path.dirname(p)[-40:], font=(UI_FONT, 8), fill=TH.TERTIARY, anchor="w", tags=tag)

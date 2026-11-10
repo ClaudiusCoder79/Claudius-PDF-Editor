@@ -108,6 +108,15 @@ PRINTING
 File > Print (Ctrl+P) or the printer button in the quick toolbar: choose the printer, number of copies,
 pages and scale. On Windows the pages are sent straight to the printer - no other PDF program is needed.
 
+NEW IN 4.4
+----------
+  - FIND TOOLS AND COMMANDS (Ctrl+K, or the magnifier next to the quick toolbar): type a few letters and run any tool or
+    dialog of the program. The list shows which tab each tool lives on and remembers what you used last.
+  - GUIDED ACTIONS (Tools tab, or Ctrl+K): ready-made step lists - Share safely, Legal documents, Archive, Prepare for
+    printing or publishing. Each step opens the normal tool; when you finish it the next step is ready. You can skip steps.
+  - RECOMMENDED TOOLS on the start screen: Organize pages, Add comments, Edit text, Protect, Compare files, CAD and measure.
+  - The program name in the top bar is hidden on narrower windows so that all tabs stay visible.
+
 NEW IN 4.3
 ----------
   - CAD TOOLS (new "CAD" tab) for plans and technical drawings:
