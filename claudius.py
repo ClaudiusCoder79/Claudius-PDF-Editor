@@ -23,6 +23,38 @@ from tkinter import ttk, filedialog, messagebox, simpledialog, colorchooser
 # ---- first sign of life: a small window that appears BEFORE the heavy modules (PyMuPDF, Pillow ...) are loaded
 _PRE = None
 
+SPLASH_COLOURS = ("#FF3B30", "#FF9500", "#FFCC00", "#34C759", "#30B0C7", "#007AFF", "#5856D6", "#AF52DE")
+
+
+def _splash_ui(parent, scale, bg, fg, sub, tert, font, title, version, free, starting):
+    """the start-up card: coloured app tile, name, version, a strip in the iOS system colours.  Used by the very first
+    window and by the full one, so nothing jumps when one replaces the other.  Plain Tk only (no Pillow needed yet)."""
+    sc = lambda v: int(round(v * scale))
+    W = sc(360)
+    card = tk.Frame(parent, bg=bg, padx=0, pady=0)
+    cv = tk.Canvas(card, width=W, height=sc(268), bg=bg, highlightthickness=0)
+    cv.pack()
+    cx, t, sz, rad = W // 2, sc(26), sc(84), sc(20)
+    x0, x1 = cx - sz // 2, cx + sz // 2
+
+    def rr(a, b, c, d, r, **kw):
+        pts = [a + r, b, c - r, b, c, b, c, b + r, c, d - r, c, d, c - r, d, a + r, d, a, d, a, d - r, a, b + r, a, b]
+        return cv.create_polygon(pts, smooth=True, **kw)
+    rr(x0 + sc(2), t + sc(5), x1 + sc(2), t + sz + sc(5), rad, fill="#d8d8de" if bg == "#ffffff" else "#1a1a1c", outline="")   # soft shadow
+    rr(x0, t, x1, t + sz, rad, fill="#0A84FF", outline="")
+    cv.create_text(cx, t + sz // 2, text="C", font=(font, 40, "bold"), fill="white")
+    y = t + sz + sc(22)
+    cv.create_text(cx, y, text=title, font=(font, 19, "bold"), fill=fg)
+    cv.create_text(cx, y + sc(30), text=version, font=(font, 10), fill=sub)
+    cv.create_text(cx, y + sc(56), text=free, font=(font, 9), fill=tert)
+    n, seg = len(SPLASH_COLOURS), sc(26)
+    bx = cx - n * seg // 2
+    for i, c in enumerate(SPLASH_COLOURS):
+        cv.create_rectangle(bx + i * seg, y + sc(82), bx + (i + 1) * seg, y + sc(86), fill=c, outline="")
+    cv.create_text(cx, y + sc(106), text=starting, font=(font, 9), fill=sub)
+    return card
+
+
 
 def _pre_splash():
     scale = 1.0
@@ -49,10 +81,9 @@ def _pre_splash():
     r.overrideredirect(True)
     r.configure(bg=line, padx=1, pady=1)
     r.tk.call("tk", "scaling", scale * 96 / 72)
-    card = tk.Frame(r, bg=bg, padx=int(46 * scale), pady=int(30 * scale))
-    card.pack()
-    tk.Label(card, text="Claudius PDF Editor", font=("Segoe UI" if sys.platform == "win32" else "TkDefaultFont", 20, "bold"), bg=bg, fg=fg).pack()
-    tk.Label(card, text="Starting...", font=("Segoe UI" if sys.platform == "win32" else "TkDefaultFont", 10), bg=bg, fg=sub).pack(pady=(12, 0))
+    font = "Segoe UI" if sys.platform == "win32" else "TkDefaultFont"
+    _splash_ui(r, scale, bg, fg, sub, "#8e8e93", font, "Claudius PDF Editor", "", "Free for personal and commercial use, source on GitHub",
+               "Starting...").pack()
     r.update_idletasks()
     w, h = r.winfo_reqwidth(), r.winfo_reqheight()
     r.geometry("%dx%d+%d+%d" % (w, h, (r.winfo_screenwidth() - w) // 2, (r.winfo_screenheight() - h) // 2))
@@ -110,7 +141,7 @@ from claudius_palette import PaletteTools
 ZOOM_MIN, ZOOM_MAX = 0.2, 32.0           # 20 % ... 3200 %
 TILE_PIXELS = 12_000_000                 # a page that would need a bigger bitmap than this is drawn in pieces (only what is visible)
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "4.6"
+APP_VERSION = "4.7"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF-Editor"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -562,6 +593,31 @@ def shape_items(kind, a, b, lw, shift=False):
 
 TAB_NAMES = ("Home", "Comment", "Edit", "Pictures", "Organize", "Forms", "Convert", "Document", "CAD", "View")
 RIBBON_FLAT = True                       # simple flat buttons (File > Settings can switch back to the coloured tiles)
+ICON_STYLE = os.environ.get("CLAUDIUS_ICONSTYLE", "mono")        # mono | colour | tile  (flat toolbar icons)
+SYSTEM_COLOURS = {"blue": "#007AFF", "green": "#34C759", "orange": "#FF9500", "red": "#FF3B30", "purple": "#AF52DE",
+                  "teal": "#30B0C7", "indigo": "#5856D6", "pink": "#FF2D55"}
+_ICON_RULES = (                                          # first matching word in the label wins
+    ("red", ("delete", "redact", "whiteout", "clean", "remove", "unprotect", "clear")),
+    ("green", ("save", "apply", "check", "accessib", "pdf/a", "sign", "date", "protect", "verify")),
+    ("orange", ("highlight", "underline", "strike", "squiggly", "sticky", "stamp", "pen", "shapes", "text box", "note", "comment", "show list", "more")),
+    ("purple", ("image", "picture", "photo", "adjust", "crop", "flip", "border", "gray", "b & w", "no white", "reset", "align", "front", "back")),
+    ("teal", ("rotate", "move", "extract", "split", "blank", "insert", "merge", "page", "undo history", "folder")),
+    ("indigo", ("convert", "png", "word", "excel", "export", "to ", "ocr", "optimi", "compare", "attach", "propert", "settings", "guided", "watermark", "background", "header")),
+)
+
+
+def icon_colour(label):
+    t = (label or "").lower()
+    for name, words in _ICON_RULES:
+        if any(w in t for w in words):
+            return SYSTEM_COLOURS[name]
+    return SYSTEM_COLOURS["blue"]
+
+
+def mix_hex(c, o, t):
+    a = [int(c[i:i + 2], 16) for i in (1, 3, 5)]
+    b = [int(o[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#%02x%02x%02x" % tuple(round(x + (y - x) * t) for x, y in zip(a, b))
 
 
 class RibbonButton(tk.Canvas):
@@ -595,8 +651,15 @@ class RibbonButton(tk.Canvas):
                 round_rect(self, S(2), S(1), self._bw - S(2), self._bh - S(2), S(8),
                            fill=TH.TINT if state != "hover" else HOVER_BG, outline="")
             on = state in ("active", "pressed", "hover")
+            col = ACCENT if on else TH.SECOND
+            if ICON_STYLE != "mono":
+                col = icon_colour(self._text)
+                if ICON_STYLE == "tile":                  # soft tinted rounded square behind a coloured glyph
+                    base = TH.CARD if TH.IS_DARK else "#FFFFFF"
+                    round_rect(self, cx - S(17), cy - S(15), cx + S(17), cy + S(15), S(9),
+                               fill=mix_hex(base, col, 0.30 if TH.IS_DARK else 0.14), outline="")
             self.create_text(cx, cy + (S(1) if state == "pressed" else 0), text=self._icon, font=(ICON_FONT, self._isize),
-                             fill=ACCENT if on else TH.SECOND)
+                             fill=col)
             self.create_text(cx, S(46), text=label, font=(UI_FONT, 8), fill=ACCENT if self.active else TH.LABEL)
             return
         self._tile = TH.tile_photo(self, S(36), self._color, state, S)
@@ -741,7 +804,9 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         if SCALE != 1:
             self.tk.call("tk", "scaling", SCALE * 96 / 72)
         self.title(APP_NAME)
-        self.geometry(f"{S(1320)}x{S(820)}")
+        _sw, _sh = self.winfo_screenwidth(), self.winfo_screenheight()
+        _w, _h = min(S(1320), _sw - S(40)), min(S(820), _sh - S(90))
+        self.geometry("%dx%d+%d+%d" % (_w, _h, (_sw - _w) // 2, max(0, (_sh - _h) // 2 - S(20))))      # centred on the screen
         self.minsize(S(900), S(560))
         self.configure(bg=BAR_BG)
 
@@ -791,6 +856,8 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         self._pro_init()
         self._v3_init()
         globals()["RIBBON_FLAT"] = bool(self.cfg.get("ribbon_flat", True))
+        if not os.environ.get("CLAUDIUS_ICONSTYLE"):
+            globals()["ICON_STYLE"] = self.cfg.get("icon_style", "colour") if self.cfg.get("icon_style", "colour") in ("mono", "colour", "tile") else "colour"
         self._load_icons()
         self._build_topbar()
         self._build_ribbons()
@@ -856,17 +923,12 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
             sp = tk.Toplevel(self)
             sp.overrideredirect(True)
             sp.configure(bg=TH.LINE if hasattr(TH, "LINE") else "#c7c7cc", padx=1, pady=1)
-            card = tk.Frame(sp, bg=TH.CARD, padx=S(40), pady=S(26))
-            card.pack()
-            self._splash_logo = tk.PhotoImage(data=LOGO_128_B64, master=sp)
-            tk.Label(card, image=self._splash_logo, bg=TH.CARD).pack()
-            tk.Label(card, text=APP_NAME, font=(UI_FONT, 20, "bold"), bg=TH.CARD, fg=TH.LABEL).pack(pady=(10, 0))
-            tk.Label(card, text=f"{tr('Version')} {APP_VERSION}", font=(UI_FONT, 10), bg=TH.CARD, fg=TH.SECOND).pack(pady=(4, 0))
-            tk.Label(card, text=tr(APP_FREEWARE), font=(UI_FONT, 9), bg=TH.CARD, fg=TH.TERTIARY).pack(pady=(10, 0))
-            tk.Label(card, text=tr("Starting..."), font=(UI_FONT, 9), bg=TH.CARD, fg=TH.SECOND).pack(pady=(14, 0))
+            _splash_ui(sp, SCALE, "#2c2c2e" if TH.IS_DARK else "#ffffff", TH.LABEL, TH.SECOND, TH.TERTIARY, UI_FONT, APP_NAME,
+                       f"{tr('Version')} {APP_VERSION}", tr(APP_FREEWARE), tr("Starting...")).pack()
             sp.update_idletasks()
             w, h = sp.winfo_reqwidth(), sp.winfo_reqheight()
             sp.geometry("%dx%d+%d+%d" % (w, h, (sp.winfo_screenwidth() - w) // 2, (sp.winfo_screenheight() - h) // 2))
+            sp.configure(bg=TH.LINE if not TH.IS_DARK else "#48484a")
             sp.attributes("-topmost", True)
             sp.update()
             self._splash = sp

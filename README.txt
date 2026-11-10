@@ -108,6 +108,16 @@ PRINTING
 File > Print (Ctrl+P) or the printer button in the quick toolbar: choose the printer, number of copies,
 pages and scale. On Windows the pages are sent straight to the printer - no other PDF program is needed.
 
+NEW IN 4.7
+----------
+  - COLOURED ICONS: toolbar icons now use the iOS system colours by meaning (red = delete/redact, green = save/protect,
+    orange = markup, purple = pictures, teal = pages, indigo = convert/settings). Settings > Icon colours: coloured,
+    coloured on soft tiles, or grey.
+  - iOS-STYLE FONT: the free Inter font (SIL Open Font License, in the "fonts" folder) is loaded privately by the
+    program, nothing is installed. If it cannot be loaded, Segoe UI is used.
+  - NEW START-UP CARD: coloured app tile and colour strip; the first window and the full one look the same and sit in
+    the middle of the screen. The main window also opens centred when no position is remembered.
+
 NEW IN 4.6
 ----------
   - CLEANER TOOLBAR (Foxit-style): ten tabs instead of fourteen (File, Home, Comment, Edit, Pictures, Organize, Forms,

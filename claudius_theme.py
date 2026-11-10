@@ -8,6 +8,35 @@ from tkinter import font as tkfont
 
 UI_FONT = "Segoe UI"
 
+
+def _load_bundled_font():
+    """Inter (SIL Open Font License) is the closest free match to the iOS system font.  It is loaded privately for this
+    program only (nothing is installed).  If anything goes wrong the normal Windows font stays in use."""
+    import os, sys
+    if os.environ.get("CLAUDIUS_FONT") == "system":
+        return "Segoe UI"
+    if sys.platform != "win32" and not os.environ.get("CLAUDIUS_FONT"):
+        return "Segoe UI"
+    if sys.platform != "win32":
+        return os.environ["CLAUDIUS_FONT"]                       # test hook on other systems
+    try:
+        import ctypes
+        here = [os.path.dirname(os.path.abspath(__file__)), getattr(sys, "_MEIPASS", "")]
+        added = 0
+        for base in here:
+            for name in ("Inter-Regular.otf", "Inter-Bold.otf"):
+                p = os.path.join(base, "fonts", name)
+                if base and os.path.isfile(p):
+                    added += 1 if ctypes.windll.gdi32.AddFontResourceExW(p, 0x10, 0) > 0 else 0
+            if added:
+                break
+        return "Inter" if added >= 2 else "Segoe UI"
+    except Exception:
+        return "Segoe UI"
+
+
+UI_FONT = _load_bundled_font()
+
 # ---- iOS system colours: light and dark sets.  init() copies the chosen set into this module's globals,
 #      so every other file just reads TH.BG, TH.ACCENT ... (a change of theme takes effect after a restart).
 LIGHT = dict(

@@ -42,7 +42,7 @@ V3_DEFAULTS = {
     "hl_names": ["Important", "Agree", "Question", "Reference"],
     "hl_colors": None,
     "presets": {}, "positions": {},
-    "single_instance": True, "ribbon_flat": True, "check_updates": False, "update_last": "", "update_skip": "",
+    "single_instance": True, "ribbon_flat": True, "icon_style": "colour", "check_updates": False, "update_last": "", "update_skip": "",
 }
 MAX_POSITIONS = 300
 
@@ -478,6 +478,12 @@ class V3Tools:
                        bg=BG, activebackground=BG, fg=TH.LABEL, selectcolor=TH.CARD, font=(UI_FONT, 9)
                        ).grid(row=r, column=1, columnspan=2, sticky="w", pady=(10, 0))
         r += 1
+        self._label(d, "Icon colours", bold=True).grid(row=r, column=0, sticky="w", pady=(6, 3))
+        styles = [("colour", "Coloured icons"), ("tile", "Coloured icons on soft tiles"), ("mono", "Grey icons")]
+        istyle = tk.StringVar(value=_tr(dict(styles).get(c.get("icon_style", "colour"), "Coloured icons")))
+        ttk.Combobox(d, textvariable=istyle, values=[_tr(n) for _k, n in styles], state="readonly", width=28).grid(
+            row=r, column=1, columnspan=2, sticky="w", pady=(6, 0))
+        r += 1
         self._label(d, "Updates", bold=True).grid(row=r, column=0, sticky="w", pady=(10, 3))
         tk.Checkbutton(d, text="Look on GitHub for a new version when the program starts (once a day)", variable=v["check_updates"],
                        bg=BG, activebackground=BG, fg=TH.LABEL, selectcolor=TH.CARD, font=(UI_FONT, 9)
@@ -498,6 +504,7 @@ class V3Tools:
             except (tk.TclError, ValueError):
                 pass
             c["printer"] = printer.get().strip()
+            c["icon_style"] = {_tr(n): k for k, n in styles}.get(istyle.get(), "colour")
             try:
                 import claudius_pro
                 claudius_pro.RECOVERY_KEEP_DAYS = c["recovery_days"]

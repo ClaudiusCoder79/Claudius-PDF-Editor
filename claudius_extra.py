@@ -38,8 +38,8 @@ except ImportError:
 from PIL import Image, ImageChops, ImageDraw, ImageFont, ImageOps, ImageTk
 
 APP = "Claudius PDF Editor"
-UI_FONT = "Segoe UI"
 import claudius_theme as TH
+UI_FONT = TH.UI_FONT
 from claudius_theme import round_rect
 BG = TH.BG
 ACCENT = TH.ACCENT
