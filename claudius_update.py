@@ -21,14 +21,12 @@ import tempfile
 import threading
 import tkinter as tk
 import urllib.error
-import urllib.request
-import webbrowser
 from tkinter import ttk, messagebox
 from urllib.parse import urlparse
 
 import claudius_theme as TH
 from claudius_i18n import tr as _tr
-from claudius_extra import APP, UI_FONT, BG
+from claudius_extra import APP, UI_FONT, BG, webbrowser
 
 REPO = "ClaudiusCoder79/Claudius-PDF-Editor"
 API_URL = "https://api.github.com/repos/%s/releases/latest" % REPO
@@ -51,20 +49,33 @@ def _host_ok(url):
         return False
 
 
-class _SafeRedirect(urllib.request.HTTPRedirectHandler):
-    """follow redirects only to https pages on GitHub's own hosts"""
+def _make_safe_redirect():
+    import urllib.request
 
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        if not _host_ok(newurl):
-            raise urllib.error.URLError("redirect to a host that is not allowed: %s" % urlparse(newurl).hostname)
-        return super().redirect_request(req, fp, code, msg, headers, newurl)
+    class _SafeRedirect(urllib.request.HTTPRedirectHandler):
+        """follow redirects only to https pages on GitHub's own hosts"""
+
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            if not _host_ok(newurl):
+                raise urllib.error.URLError("redirect to a host that is not allowed: %s" % urlparse(newurl).hostname)
+            return super().redirect_request(req, fp, code, msg, headers, newurl)
+    return _SafeRedirect
+
+
+def __getattr__(name):                      # the network code (urllib.request) is only loaded when it is needed
+    if name == "_SafeRedirect":
+        cls = _make_safe_redirect()
+        globals()["_SafeRedirect"] = cls
+        return cls
+    raise AttributeError(name)
 
 
 def _open(url, version="0"):
     """urlopen with the safe redirect rule (tests replace this function)"""
+    import urllib.request
     if not _host_ok(url):
         raise urllib.error.URLError("address not allowed")
-    opener = urllib.request.build_opener(_SafeRedirect)
+    opener = urllib.request.build_opener(globals().get("_SafeRedirect") or __getattr__("_SafeRedirect"))
     req = urllib.request.Request(url, headers={"User-Agent": "Claudius-PDF-Editor/%s" % version,
                                                "Accept": "application/vnd.github+json, application/octet-stream"})
     return opener.open(req, timeout=TIMEOUT)
@@ -102,14 +113,14 @@ def fetch_latest(current, opener=None):
     info = {"tag": str(data["tag_name"]).lstrip("v"), "notes": str(data.get("body") or "")[:3000],
             "page": RELEASE_PAGE, "installer": None, "sums_url": None}
     page = str(data.get("html_url") or "")
-    if page.startswith("https://github.com/%s/" % REPO):
+    if page.lower().startswith("https://github.com/%s/" % REPO.lower()):
         info["page"] = page
     for a in data.get("assets") or []:
         if not isinstance(a, dict):
             continue
         name, url = str(a.get("name") or ""), str(a.get("browser_download_url") or "")
         size = a.get("size") if isinstance(a.get("size"), int) else 0
-        if not _host_ok(url) or not url.startswith("https://github.com/%s/releases/download/" % REPO):
+        if not _host_ok(url) or not url.lower().startswith("https://github.com/%s/releases/download/" % REPO.lower()):
             continue
         if INSTALLER_RE.match(name) and 0 < size <= MAX_INSTALLER and info["installer"] is None:
             info["installer"] = (name, url, size)
@@ -179,9 +190,6 @@ class UpdateTools:
             today = datetime.date.today().isoformat()
             if self.cfg.get("update_last") == today:
                 return
-            self.cfg["update_last"] = today
-            from claudius_v3 import save_cfg
-            save_cfg(self.cfg)
             self.upd_check(manual=False)
         except Exception:
             pass
@@ -208,6 +216,13 @@ class UpdateTools:
                 self.after(150, poll)
                 return
             self._upd_busy = False
+            if "err" not in box and not manual:                  # a failed check (offline at start) is tried again next time
+                try:
+                    from claudius_v3 import save_cfg
+                    self.cfg["update_last"] = datetime.date.today().isoformat()
+                    save_cfg(self.cfg)
+                except Exception:
+                    pass
             if "err" in box:
                 if manual:
                     messagebox.showinfo(APP, _tr("Could not look for updates (is the computer online?).") + "\n\n%s" % box["err"])
@@ -314,7 +329,10 @@ class UpdateTools:
         ttk.Button(row, text=_tr("Skip this version"), command=skip).pack(side="right")
         ttk.Button(row, text=_tr("Later"), command=close).pack(side="right", padx=6)
         if not can_install:
-            msg.config(text=_tr("Automatic installing works on Windows with the installer from the release; use the release page to download."))
+            if sys.platform == "win32":
+                msg.config(text=_tr("This release has no installer attached yet (the build may still be running, or the release was made without one). Try again in a few minutes, or use the release page."))
+            else:
+                msg.config(text=_tr("Automatic installing works on Windows with the installer from the release; use the release page to download."))
         d.protocol("WM_DELETE_WINDOW", close)
         d.bind("<Escape>", lambda e: close())
 

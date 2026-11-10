@@ -111,3 +111,16 @@ OPEN FILES AS TABS (4.1)
   as if the user had chosen them in File > Open. A local program running as the same user could read the secret and
   ask the window to open a PDF - which it could do anyway by starting the program with that file. Can be switched off
   in Settings.
+
+
+Review of version 4.5
+---------------------
+  - Links in PDFs: only web and e-mail addresses are opened, after you confirm (checked again).
+  - Programs that are started (Ghostscript, LibreOffice, PowerShell, the installer) are started with a list of arguments, never
+    through a shell; PowerShell and the installer by full path / only after your click. Ghostscript runs with -dSAFER.
+  - Password-protected documents are never copied to the crash-recovery folder.
+  - Update: https only, GitHub hosts only, size limits, SHA-256 from the release's SHA256SUMS.txt. Limit: the checksum comes
+    from the same release as the installer, so it protects against damaged or swapped downloads, not against a hijacked
+    GitHub account. The installer is not code-signed, so Windows SmartScreen may warn.
+  - The build (GitHub Actions) uses version tags of the actions and an unpinned Inno Setup package from Chocolatey; pin them to
+    exact versions if you need a fully reproducible build.

@@ -108,6 +108,16 @@ PRINTING
 File > Print (Ctrl+P) or the printer button in the quick toolbar: choose the printer, number of copies,
 pages and scale. On Windows the pages are sent straight to the printer - no other PDF program is needed.
 
+NEW IN 4.5
+----------
+  - UPDATES: a failed check at start-up (for example no internet yet) is now tried again at the next start instead of
+    waiting a day. The dialog says clearly when a release has no installer attached yet. The build workflow now also
+    builds for version tags written without "v" (4.5 as well as v4.5).
+  - FASTER START: only the Home tab is built before the window appears; the other tabs are built a moment later.
+    Web-link and update code is loaded only when needed.
+  - SECURITY: temporary files of the PDF/A conversion get unpredictable names; leftovers of the updater, PDF/A, scanner
+    and read-aloud work are swept after a day.
+
 NEW IN 4.4
 ----------
   - FIND TOOLS AND COMMANDS (Ctrl+K, or the magnifier next to the quick toolbar): type a few letters and run any tool or

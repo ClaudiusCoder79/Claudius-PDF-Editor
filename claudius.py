@@ -12,7 +12,6 @@ _T0 = _time.time()                # start-up timing (written to ~/.claudius/star
 import copy
 import io
 import math
-import webbrowser
 import os
 import sys
 import time
@@ -42,6 +41,7 @@ import claudius_theme as TH
 TH.init()                        # light / dark look (File > Appearance); also before any window exists
 
 try:
+    from claudius_extra import webbrowser
     from claudius_extra import (CONFIG_DIR, safe_zoom, safe_dpi, SCALE, S, ExtraTools, EXTRA_HINTS, EXTRA_TOOLS, RECT_TOOLS, HL_COLORS, CONVERT_KINDS)
 except ImportError:
     sys.exit("claudius_extra.py is missing - keep it in the same folder as claudius.py")
@@ -52,7 +52,7 @@ from claudius_palette import PaletteTools
 ZOOM_MIN, ZOOM_MAX = 0.2, 32.0           # 20 % ... 3200 %
 TILE_PIXELS = 12_000_000                 # a page that would need a bigger bitmap than this is drawn in pieces (only what is visible)
 APP_NAME = "Claudius PDF Editor"
-APP_VERSION = "4.4"
+APP_VERSION = "4.5"
 APP_URL = "https://github.com/ClaudiusCoder79/Claudius-PDF-Editor"
 APP_FREEWARE = "Free for personal and commercial use, source on GitHub"
 MAX_UNDO = 25
@@ -908,6 +908,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
             pass
 
     def show_tab(self, name):
+        self._ensure_ribbon(name)
         self.current_tab = name
         for n, pill in self.tab_labels.items():
             pill.set_selected(n == name)
@@ -964,6 +965,43 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         for name in ("Home", "Comment", "Shapes", "CAD", "Edit", "Sign", "Photos", "Adjust", "Organize", "Document", "Convert", "Tools", "Review", "View"):
             self.ribbons[name] = tk.Frame(holder, bg=RIBBON_BG)
 
+        self._rb_built = set()
+        self._rb_order = [n for n in self.ribbons]
+        self._ensure_ribbon("Home")                 # the other tabs are built right after the window is on screen
+        self.after(30, self._build_ribbons_idle)
+
+    def _ensure_ribbon(self, name):
+        if name in self._rb_built:
+            return
+        self._rb_built.add(name)
+        getattr(self, "_rb_" + name)()
+        try:
+            t = self.tool.get()
+            for b in self.tool_buttons.get(t, []):
+                b.set_active(True)
+        except Exception:
+            pass
+
+    def _ensure_all_ribbons(self):
+        for n in self._rb_order:
+            self._ensure_ribbon(n)
+
+    def _build_ribbons_idle(self):
+        """build one more tab per idle step so that the first window appears sooner"""
+        try:
+            for n in self._rb_order:
+                if n not in self._rb_built:
+                    self._ensure_ribbon(n)
+                    self.after(8, self._build_ribbons_idle)
+                    return
+            self._ribbons_done()
+        except tk.TclError:
+            pass
+
+    def _ribbons_done(self):
+        pass
+
+    def _rb_Home(self):
         # Home
         r = self.ribbons["Home"]
         g = self.group(r, "File")
@@ -990,6 +1028,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         self.rb(g, "⟲", "Left", lambda: self.rotate_selected(-90), size=19)
         self.rb(g, "⟳", "Right", lambda: self.rotate_selected(90), size=19)
 
+    def _rb_Comment(self):
         # Comment
         r = self.ribbons["Comment"]
         g = self.group(r, "Text markup")
@@ -1022,9 +1061,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
             self.hl_buttons.append(hb)
         self.style_group(r)
 
-        # CAD
-        self.build_cad_ribbon(self.ribbons["CAD"])
-
+    def _rb_Shapes(self):
         # Shapes
         r = self.ribbons["Shapes"]
         g = self.group(r, "Lines")
@@ -1045,6 +1082,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         self.rb(g, "＋", "Plus", None, tool="plus", size=20)
         self.shape_style_group(r)
 
+    def _rb_Edit(self):
         # Edit
         r = self.ribbons["Edit"]
         g = self.group(r, "Change")
@@ -1066,6 +1104,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         self.rb(g, "↷", "Redo", self.redo, size=19)
         self.style_group(r)
 
+    def _rb_Sign(self):
         # Sign
         r = self.ribbons["Sign"]
         g = self.group(r, "Sign")
@@ -1082,6 +1121,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
                  font=(UI_FONT, 8), bg=RIBBON_BG, fg=TH.SECOND, justify="left").pack(padx=8, pady=14)
         self.style_group(r)
 
+    def _rb_Photos(self):
         # Photos
         r = self.ribbons["Photos"]
         g = self.group(r, "Insert")
@@ -1103,6 +1143,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         ttk.Combobox(qf, textvariable=self.quality_var, values=list(QUALITY), state="readonly",
                      width=18).pack(pady=2)
 
+    def _rb_Adjust(self):
         # Adjust
         r = self.ribbons["Adjust"]
         g = self.group(r, "Rotate / flip")
@@ -1129,6 +1170,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         g = self.group(r, "Undo")
         self.rb(g, "↺", "Reset image", self.img_reset, size=19, width=70)
 
+    def _rb_Organize(self):
         # Organize
         r = self.ribbons["Organize"]
         g = self.group(r, "Rotate")
@@ -1151,6 +1193,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         g = self.group(r, "Export")
         self.rb(g, "🖼", "To PNG", self.export_png)
 
+    def _rb_Document(self):
         # Document
         r = self.ribbons["Document"]
         g = self.group(r, "Page decoration")
@@ -1178,6 +1221,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         self.rb(g, "ℹ", "Properties", self.dlg_properties, size=18, width=66)
         self.rb(g, "🖨", "Print", self.do_print, size=18)
 
+    def _rb_Convert(self):
         # Convert
         r = self.ribbons["Convert"]
         g = self.group(r, "Convert PDF to")
@@ -1190,6 +1234,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         self.rb(g, "🖷", "From scanner", self.dlg_scan, size=18, width=78)
         self.rb(g, "📑", "Photos→Pages", self.photos_to_pages, width=86)
 
+    def _rb_Tools(self):
         # Tools (version 3)
         r = self.ribbons["Tools"]
         g = self.group(r, "Workflow")
@@ -1211,6 +1256,8 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         self.rb(g, "▤", "Batch folder", self.dlg_batch, size=18, width=72)
         self.rb(g, "🗜", "Smart compress", self.dlg_smart_compress, size=18, width=88)
         self.rb(g, "🔍", "Search folder", self.dlg_folder_search, size=18, width=82)
+
+    def _rb_Review(self):
         r = self.ribbons["Review"]
         g = self.group(r, "Highlights & checks")
         self.rb(g, "🖍", "Export highlights", self.dlg_export_highlights, size=18, width=96)
@@ -1220,6 +1267,7 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         g = self.group(r, "Program")
         self.rb(g, "⚙", "Settings", self.dlg_settings, size=18, width=60)
 
+    def _rb_View(self):
         # View
         r = self.ribbons["View"]
         g = self.group(r, "Zoom")
@@ -1250,6 +1298,10 @@ class PdfEditor(PaletteTools, CadTools, TextTools, FrameTools, QuickTools, Updat
         self.rb(g, "▦", "Show fields", self.toggle_fields, size=18, width=68)
 
     # --------------------------------------------------------------- body
+
+    def _rb_CAD(self):
+        self.build_cad_ribbon(self.ribbons["CAD"])
+
     def _build_body(self):
         body = tk.Frame(self, bg=BAR_BG)
         body.pack(side="top", fill="both", expand=True)

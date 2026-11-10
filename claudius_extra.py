@@ -15,7 +15,17 @@ import sys
 import tempfile
 import textwrap
 import time
-import webbrowser
+
+
+class _LazyWebbrowser:
+    """webbrowser is only imported when a link is really opened (saves start-up time)"""
+    @staticmethod
+    def open(*a, **k):
+        import webbrowser as _w
+        return _w.open(*a, **k)
+
+
+webbrowser = _LazyWebbrowser()
 import tkinter as tk
 import tkinter.font
 from tkinter import ttk, filedialog, messagebox, simpledialog, colorchooser
@@ -731,7 +741,7 @@ def sweep_stale_temp(max_age_hours=24):
     """remove leftovers of earlier runs (print files, conversion work folders)"""
     import glob
     now = time.time()
-    for pat in ("claudius_print_*.pdf", "claudius_cv_*", "claudius_lo_*"):
+    for pat in ("claudius_print_*.pdf", "claudius_cv_*", "claudius_lo_*", "claudius_update_*", "claudius_pdfa_*", "claudius_scan_*", "claudius_tts_*"):
         for p in glob.glob(os.path.join(tempfile.gettempdir(), pat)):
             try:
                 if now - os.path.getmtime(p) > max_age_hours * 3600:

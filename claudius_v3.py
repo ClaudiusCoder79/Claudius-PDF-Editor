@@ -17,7 +17,6 @@ import shutil
 import time
 import tkinter as tk
 import urllib.parse
-import webbrowser
 from tkinter import ttk, filedialog, messagebox
 
 try:
@@ -29,6 +28,7 @@ from PIL import Image, ImageDraw, ImageTk
 import claudius_theme as TH
 from claudius_i18n import tr as _tr
 import claudius_extra as EX
+from claudius_extra import webbrowser
 from claudius_extra import APP, UI_FONT, BG, ACCENT, S, CONFIG_DIR, find_font, load_pil_font
 from claudius_view import get_setting, set_setting
 

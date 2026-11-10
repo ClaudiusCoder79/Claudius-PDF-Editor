@@ -30,6 +30,7 @@ class QuickTools:
         btn._qt_key = key
 
     def qt_items(self):
+        self._ensure_all_ribbons()
         items = self.__dict__.setdefault("_qt_items", None)
         if items is None:
             saved = (get_setting("quick_tools", {}) or {}).get("items")
@@ -352,6 +353,7 @@ class QuickTools:
                 c.destroy()
             needle = q.get().strip().lower()
             seen = set()
+            self._ensure_all_ribbons()
             for key, v in sorted(self.qt_reg.items(), key=lambda kv: kv[1]["text"].lower()):
                 label = _tr(v["text"])
                 if needle and needle not in label.lower() and needle not in v["text"].lower():
@@ -369,6 +371,7 @@ class QuickTools:
         d.bind("<Escape>", lambda e: d.destroy())
 
     def qt_restore(self):
+        self._ensure_all_ribbons()
         """called once after start-up: re-open the toolbar when it was open last time"""
         try:
             if (get_setting("quick_tools", {}) or {}).get("visible"):

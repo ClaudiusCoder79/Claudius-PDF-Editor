@@ -16,7 +16,6 @@ import sys
 import tempfile
 import time
 import tkinter as tk
-import webbrowser
 from tkinter import ttk, filedialog, messagebox
 
 try:
@@ -27,6 +26,7 @@ from PIL import Image
 
 import claudius_theme as TH
 from claudius_i18n import tr as _tr
+from claudius_extra import webbrowser
 from claudius_extra import APP, UI_FONT, BG, S, parse_pages, pages_to_text
 import claudius_extra as EX
 
@@ -751,7 +751,8 @@ class ProTools:
                 return
             d.destroy()
             self.commit_floats()
-            tmp = os.path.join(tempfile.gettempdir(), f"claudius_cv_pdfa_{os.getpid()}.pdf")
+            _fd, tmp = tempfile.mkstemp(prefix="claudius_cv_pdfa_", suffix=".pdf")      # unpredictable name, readable only by you
+            os.close(_fd)
             try:
                 self.doc.save(tmp, garbage=3, deflate=True, encryption=fitz.PDF_ENCRYPT_NONE)
                 self.status.config(text=_tr("Converting to PDF/A..."))

@@ -74,6 +74,7 @@ class PaletteTools:
 
     # ------------------------------------------------------------------ the list of commands
     def pal_commands(self):
+        self._ensure_all_ribbons()
         cmds, seen = [], set()
         ribbon_of = {fr: n for n, fr in self.ribbons.items()}
         for key, v in getattr(self, "qt_reg", {}).items():
