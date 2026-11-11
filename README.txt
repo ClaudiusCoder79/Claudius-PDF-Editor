@@ -108,6 +108,14 @@ PRINTING
 File > Print (Ctrl+P) or the printer button in the quick toolbar: choose the printer, number of copies,
 pages and scale. On Windows the pages are sent straight to the printer - no other PDF program is needed.
 
+NEW IN 4.8
+----------
+  - NEW PROGRAM ICON in the toolbar colours (bright blue tile, white page, "C" and a colour strip) - EXE, installer,
+    window and start-up card all use it.
+  - START-UP CARD is centred in the usable screen area (taskbar excluded) and re-checked after it appears; the window
+    position is written to ~/.claudius/startup.log so a mis-placed window can be diagnosed.
+  - startup.log no longer shows the meaningless "since process start" figure.
+
 NEW IN 4.7
 ----------
   - COLOURED ICONS: toolbar icons now use the iOS system colours by meaning (red = delete/redact, green = save/protect,
